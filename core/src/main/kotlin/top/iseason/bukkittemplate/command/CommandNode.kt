@@ -75,14 +75,9 @@ open class CommandNode(
         }
 
     /**
-     * 子节点名称集合
+     * 子节点
      */
-    val subNodeKeys = mutableListOf<String>()
-
-    /**
-     * 子节点映射，全小写
-     */
-    val subNodesInsensitive = mutableMapOf<String, CommandNode>()
+    val subNodes = mutableMapOf<String, CommandNode>()
 
     /**
      * 参数类型和建议参数
@@ -96,21 +91,19 @@ open class CommandNode(
         if (parent == null && Bukkit.getPluginManager().getPermission(permission.name) == null) {
             Bukkit.getPluginManager().addPermission(permission)
         }
-        subNodeKeys += node.name
-        subNodesInsensitive[node.name.lowercase()] = node
+        subNodes[node.name] = node
         node.parent = this
         CommandHandler.addPermissions(node.permission)
         node.alias?.forEach {
-            subNodeKeys += it
-            subNodesInsensitive[it.lowercase()] = node
+            subNodes[it] = node
         }
     }
 
     /**
-     * 获取子节点,大小写不敏感
+     * 获取子节点
      * @return null if not exists
      */
-    fun getSubNode(arg: String) = subNodesInsensitive[arg.lowercase()]
+    fun getSubNode(arg: String) = subNodes[arg]
 
     /**
      * 获取该命令发送者可见的子节点
@@ -127,7 +120,7 @@ open class CommandNode(
      */
     fun getSubNodes(sender: CommandSender): Set<CommandNode> {
         val set = mutableSetOf<CommandNode>()
-        for (value in subNodesInsensitive.values) {
+        for (value in subNodes.values) {
             if (!value.canUse(sender)) continue
             set.add(value)
         }
@@ -147,13 +140,15 @@ open class CommandNode(
     }
 
     /**
-     * 获取用户有权限的子键名称
+     * 获取子健
      */
     fun getKeys(sender: CommandSender): MutableList<String> {
-        return subNodeKeys.filter {
-            getSubNode(it)?.canUse(sender) == true
-        }.toMutableList()
-
+        val mutableListOf = mutableListOf<String>()
+        subNodes.forEach { (k, v) ->
+            if (!v.canUse(sender)) return@forEach
+            mutableListOf.add(k)
+        }
+        return mutableListOf
     }
 
     /**
@@ -213,7 +208,7 @@ open class CommandNode(
             } ?: break
             deep++
         }
-        if (node.subNodeKeys.isNotEmpty() && node.onExecute == null) {
+        if (node.subNodes.isNotEmpty() && node.onExecute == null) {
             node.showUsage(sender)
             return true
         }

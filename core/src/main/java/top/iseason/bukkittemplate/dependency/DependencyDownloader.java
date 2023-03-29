@@ -309,6 +309,16 @@ public class DependencyDownloader {
     }
 
     /**
+     * 检查依赖格式是否非法
+     *
+     * @param libraryName
+     * @return
+     */
+    public static boolean checkLibraryIllegal(String libraryName) {
+        return XmlParser.placeHolder.matcher(libraryName).find() || libraryName.contains("[") || libraryName.contains("(");
+    }
+
+    /**
      * 添加需要的依赖
      *
      * @param dependency 依赖, 将会下载依赖的子依赖(2层)
@@ -317,16 +327,6 @@ public class DependencyDownloader {
     public DependencyDownloader addDependency(String dependency) {
         dependencies.put(dependency, 2);
         return this;
-    }
-
-    /**
-     * 检查依赖格式是否非法
-     *
-     * @param libraryName
-     * @return
-     */
-    public static boolean checkLibraryIllegal(String libraryName) {
-        return XmlParser.placeHolder.matcher(libraryName).find() || libraryName.contains("[") || libraryName.contains("(");
     }
 
     /**

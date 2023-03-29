@@ -16,6 +16,7 @@ import top.iseason.bukkittemplate.debug.debug
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.toByteArray
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.util.HashSet
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -36,17 +37,32 @@ object PlayerItems : Table("player_items") {
         val mutableMapOf = mutableMapOf<String, ItemStack>()
         // 解析原版的
         val keys = Config.equipments
-        keys.forEach { slot ->
-            val item = when (slot) {
-                "head" -> player.equipment?.helmet ?: placeholder
-                "chest" -> player.equipment?.chestplate ?: placeholder
-                "legs" -> player.equipment?.leggings ?: placeholder
-                "feet" -> player.equipment?.boots ?: placeholder
-                else -> {
-                    GermSlotAPI.getItemStackFromDatabase(player, slot.drop(5)) ?: placeholder
-                }
-            }
-            mutableMapOf[slot] = item
+        if (keys.contains("head")) {
+            mutableMapOf["head"] = player.equipment?.helmet ?: placeholder
+        }
+        if (keys.contains("chest")) {
+            mutableMapOf["chest"] = player.equipment?.chestplate ?: placeholder
+        }
+        if (keys.contains("legs")) {
+            mutableMapOf["legs"] = player.equipment?.leggings ?: placeholder
+        }
+        if (keys.contains("feet")) {
+            mutableMapOf["feet"] = player.equipment?.boots ?: placeholder
+        }
+        val hashSet = HashSet<String>()
+        hashSet.addAll(keys)
+        hashSet.remove("head")
+        hashSet.remove("chest")
+        hashSet.remove("legs")
+        hashSet.remove("feet")
+        println(GermSlotAPI.getSlotDAOHandler().javaClass.name)
+        hashSet.forEach { println(it) }
+        val germs = GermSlotAPI.getGermSlotIdentitysAndItemStacks(player, hashSet)
+        germs.forEach { (k, v) ->
+            println("$k -> ${v.type}")
+        }
+        for (s in hashSet) {
+            mutableMapOf[s] = germs[s] ?: placeholder
         }
         val blob = ExposedBlob(mutableMapOf.toByteArray())
         dbTransaction {

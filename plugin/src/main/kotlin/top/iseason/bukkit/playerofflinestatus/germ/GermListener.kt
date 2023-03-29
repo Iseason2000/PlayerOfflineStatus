@@ -30,6 +30,18 @@ object GermListener : org.bukkit.event.Listener {
         if (split.size != 2) return
         val player = split[0]
         val itemId = split[1]
+        if (itemId == "body") {
+            val germGuiEntity = germGuiPart as? GermGuiEntity ?: return
+            val helmet = getItemCache(dosContent, player, "head")
+            if (helmet != null) germGuiEntity.helmet = helmet
+            val chestplate = getItemCache(dosContent, player, "chest")
+            if (chestplate != null) germGuiEntity.chestplate = chestplate
+            val leggings = getItemCache(dosContent, player, "legs")
+            if (leggings != null) germGuiEntity.leggings = leggings
+            val boots = getItemCache(dosContent, player, "feet")
+            if (boots != null) germGuiEntity.boots = boots
+            return
+        }
         val item = getItemCache(dosContent, player, itemId) ?: return
         when (itemId) {
             "head" -> (germGuiPart as? GermGuiEntity)?.helmet = item

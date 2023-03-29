@@ -212,7 +212,7 @@ object MessageUtils {
         val messageList = if (message is Collection<*>) {
             message.mapNotNull { it?.toString() }
         } else if (message?.toString().isNullOrEmpty()) return
-        else message!!.toString().split("\n", limit = 2)
+        else message!!.toString().split("\n")
         if (messageList.isEmpty()) return
         //是否传递消息,为了引用传递
         //每个消息都由消费者消费

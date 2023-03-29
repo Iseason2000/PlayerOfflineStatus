@@ -63,8 +63,8 @@ public class ReflectionUtil {
         try {
             if (!isInit)
                 urls.add(url);
-            else
-                addUrlHandleIsolated.invoke(isolatedUcp, url);
+            else BukkitTemplate.isolatedClassLoader.addURL(url);
+//                addUrlHandleIsolated.invoke(isolatedUcp, url);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
@@ -89,10 +89,10 @@ public class ReflectionUtil {
      * @param value
      */
     public static void replaceObject(Object target, Field field, Object value) throws IllegalAccessException {
-        field.setAccessible(true);
-        field.set(target, value);
-        field.setAccessible(false);
-//        unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
+//        field.setAccessible(true);
+//        field.set(target, value);
+//        field.setAccessible(false);
+        unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
     }
 
     public static URL[] getUrls() {

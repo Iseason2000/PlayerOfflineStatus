@@ -5,6 +5,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import top.iseason.bukkittemplate.dependency.PluginDependency;
 import top.iseason.bukkittemplate.loader.IsolatedClassLoader;
 
+import javax.management.loading.MLet;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -24,9 +25,10 @@ import java.util.jar.JarFile;
  */
 public class BukkitTemplate extends JavaPlugin {
 
-    public static ClassLoader isolatedClassLoader;
+    public static IsolatedClassLoader isolatedClassLoader;
     private static JavaPlugin plugin = null;
     private static Object bootStrap = null;
+
     /**
      * 构造方法，负责下载/添加依赖，并启动插件
      */

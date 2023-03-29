@@ -11,5 +11,4 @@ object PlaceHolderHook : BaseHook("PlaceholderAPI") {
             PlaceholderAPI.setPlaceholders(player, str).toColor()
         else str.toColor()
     }
-
 }
