@@ -57,7 +57,6 @@ object PlayerOfflineStatus : BukkitPlugin {
         //初始化数据
         if (GermHook.hasHooked) {
             if (Config.germ__slot_holder) GermSlotHandler.init()
-            if (Config.germ_slot_backup__enable) GermSlotBackup.init()
         }
         setupCommands()
         CommandHandler.updateCommands()

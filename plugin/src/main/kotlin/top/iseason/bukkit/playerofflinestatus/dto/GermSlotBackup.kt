@@ -28,14 +28,6 @@ object GermSlotBackup : Table("germ_slot_backup"), org.bukkit.event.Listener {
     private val time = datetime("time")
     override val primaryKey = PrimaryKey(id)
 
-    fun init() {
-        if (Config.germ_slot_backup__period > 0) {
-            submit(async = true, delay = Config.germ_slot_backup__period, period = Config.germ_slot_backup__period) {
-                backupAll()
-            }
-        }
-    }
-
     fun backup(player: String) {
         val start = System.currentTimeMillis()
         val slots =
@@ -108,7 +100,8 @@ object GermSlotBackup : Table("germ_slot_backup"), org.bukkit.event.Listener {
         return dbTransaction {
             GermSlotBackup.slice(GermSlotBackup.id, GermSlotBackup.time)
                 .select(GermSlotBackup.name eq player)
-        }.map { it[GermSlotBackup.id] to it[GermSlotBackup.time] }
+                .map { it[GermSlotBackup.id] to it[GermSlotBackup.time] }
+        }
     }
 
     fun getBackupItemsDate(id: Int) = dbTransaction {

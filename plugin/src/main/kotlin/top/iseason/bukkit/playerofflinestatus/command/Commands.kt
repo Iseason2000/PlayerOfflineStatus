@@ -16,6 +16,7 @@ import top.iseason.bukkittemplate.command.*
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.MySqlLogger
 import top.iseason.bukkittemplate.debug.SimpleLogger
+import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
 import top.iseason.bukkittemplate.utils.bukkit.MessageUtils.sendColorMessage
 import java.time.LocalDateTime
 
@@ -82,6 +83,8 @@ fun setupCommands() = command("PlayerOfflineStatus") {
     }
     node("backup") {
         description = "萌芽的槽备份功能"
+        default = PermissionDefault.OP
+
         node("show") {
             description = "查看某玩家的所有备份"
             default = PermissionDefault.OP
@@ -99,14 +102,15 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                     if (isPlayer) {
                         val clickOpen = TextComponent("[点击打开]")
                         clickOpen.clickEvent =
-                            ClickEvent(ClickEvent.Action.RUN_COMMAND, "playerofflinestatus backup open $id")
+                            ClickEvent(ClickEvent.Action.RUN_COMMAND, "/playerofflinestatus backup open $id")
+                        message.addExtra("  ")
                         message.addExtra(clickOpen)
-                        message.addExtra("    ")
+                        message.addExtra("  ")
                         val clickRollback = TextComponent("[点击回滚]")
-                        clickOpen.clickEvent =
+                        clickRollback.clickEvent =
                             ClickEvent(
                                 ClickEvent.Action.RUN_COMMAND,
-                                "playerofflinestatus backup rollback $player $id"
+                                "/playerofflinestatus backup rollback $player $id"
                             )
                         message.addExtra(clickRollback)
                     }
@@ -129,13 +133,8 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 val items = PlayerGermSlots.fromByteArray(backupItemsDate.bytes)
                 val player = sender as Player
                 val inventory = Bukkit.createInventory(player, 54, "备份ID: $id   修改是没有意义的")
-                items.forEach { (key, item) ->
-                    val l = "萌芽槽ID: $key"
-                    item.itemMeta = item.itemMeta!!.apply {
-                        if (hasLore()) {
-                            lore = lore!!.apply { add(0, l) }
-                        } else lore = listOf(l)
-                    }
+                items.forEach { (_, item) ->
+                    if (item.checkAir()) return@forEach
                     inventory.addItem(item)
                 }
                 player.openInventory(inventory)
