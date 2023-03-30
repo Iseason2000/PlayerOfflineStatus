@@ -8,7 +8,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.inventory.ItemStack
 import org.jetbrains.exposed.sql.select
 import top.iseason.bukkit.playerofflinestatus.config.Config
-import top.iseason.bukkit.playerofflinestatus.dto.PlayerItems
+import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs.papi
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.warn
@@ -16,7 +16,6 @@ import top.iseason.bukkittemplate.utils.other.CoolDown
 import java.util.concurrent.ConcurrentHashMap
 
 object GermListener : org.bukkit.event.Listener {
-    //    GermDosAPI.registerDos()
     private val playerCaches = hashMapOf<String, Map<String, ItemStack>>()
     private val noCache = ConcurrentHashMap.newKeySet<String>()
     private val coolDown = CoolDown<String>()
@@ -61,16 +60,16 @@ object GermListener : org.bukkit.event.Listener {
     private fun getItemCache(key: String, name: String, itemName: String): ItemStack? {
         var item = playerCaches[name]?.get(itemName)
         //命中缓存不过期
-        if (item != null && (Config.germCacheTime <= 0 || coolDown.check(key, Config.germCacheTime))) {
+        if (item != null && (Config.germ__cache_time <= 0 || coolDown.check(key, Config.germ__cache_time))) {
             return item
         }
         // 未命中的缓存
         val noCaChe = noCache.contains(key)
         if (noCaChe && coolDown.check("nocache-${key}", 5000)) return null
         val value = dbTransaction {
-            PlayerItems.slice(PlayerItems.items).select {
-                PlayerItems.name eq name
-            }.limit(1).firstOrNull()?.get(PlayerItems.items)
+            PlayerGermSlots.slice(PlayerGermSlots.items).select {
+                PlayerGermSlots.name eq name
+            }.limit(1).firstOrNull()?.get(PlayerGermSlots.items)
         }
         //未命中的警告
         if (value == null && !coolDown.check(key, 5000)) {
@@ -80,7 +79,7 @@ object GermListener : org.bukkit.event.Listener {
             if (noCaChe) noCache.remove(key)
         //更新缓存
         if (value != null) {
-            val fromByteArray = PlayerItems.fromByteArray(value.bytes)
+            val fromByteArray = PlayerGermSlots.fromByteArray(value.bytes)
             playerCaches[name] = fromByteArray
             item = fromByteArray[itemName]
         }

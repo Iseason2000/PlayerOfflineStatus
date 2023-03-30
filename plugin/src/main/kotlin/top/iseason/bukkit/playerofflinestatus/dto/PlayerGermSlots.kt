@@ -1,9 +1,14 @@
 package top.iseason.bukkit.playerofflinestatus.dto
 
 import com.germ.germplugin.api.GermSlotAPI
+import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.bukkit.event.EventHandler
+import org.bukkit.event.player.PlayerLoginEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.io.BukkitObjectInputStream
 import org.bukkit.util.io.BukkitObjectOutputStream
 import org.jetbrains.exposed.sql.Table
@@ -11,16 +16,19 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.update
 import top.iseason.bukkit.playerofflinestatus.config.Config
+import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.debug
-import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.toByteArray
+import top.iseason.bukkittemplate.debug.info
+import top.iseason.bukkittemplate.utils.bukkit.MessageUtils.sendColorMessage
+import top.iseason.bukkittemplate.utils.other.submit
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.HashSet
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
-object PlayerItems : Table("player_items") {
+object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
     private val placeholder = ItemStack(Material.AIR)
     private val id = integer("id").autoIncrement()
     var name = varchar("name", 255)
@@ -31,49 +39,42 @@ object PlayerItems : Table("player_items") {
         index(true, name)
     }
 
-    fun update(player: Player) {
+    /**
+     * 删除玩家的槽到数据库
+     */
+    fun upload(player: Player) {
         val currentTimeMillis = System.currentTimeMillis()
         val name = player.name
         val mutableMapOf = mutableMapOf<String, ItemStack>()
         // 解析原版的
-        val keys = Config.equipments
-        if (keys.contains("head")) {
+        val keys = Config.germ__offline_slots
+        val hashSet = HashSet(keys)
+        if (hashSet.contains("head")) {
             mutableMapOf["head"] = player.equipment?.helmet ?: placeholder
+            hashSet.remove("head")
         }
-        if (keys.contains("chest")) {
+        if (hashSet.contains("chest")) {
             mutableMapOf["chest"] = player.equipment?.chestplate ?: placeholder
+            hashSet.remove("chest")
         }
-        if (keys.contains("legs")) {
+        if (hashSet.contains("legs")) {
             mutableMapOf["legs"] = player.equipment?.leggings ?: placeholder
+            hashSet.remove("legs")
         }
-        if (keys.contains("feet")) {
+        if (hashSet.contains("feet")) {
             mutableMapOf["feet"] = player.equipment?.boots ?: placeholder
+            hashSet.remove("feet")
         }
-        val hashSet = HashSet<String>()
-        hashSet.addAll(keys)
-        hashSet.remove("head")
-        hashSet.remove("chest")
-        hashSet.remove("legs")
-        hashSet.remove("feet")
-        println(GermSlotAPI.getSlotDAOHandler().javaClass.name)
-        hashSet.forEach { println(it) }
         val germs = GermSlotAPI.getGermSlotIdentitysAndItemStacks(player, hashSet)
-        germs.forEach { (k, v) ->
-            println("$k -> ${v.type}")
-        }
         for (s in hashSet) {
             mutableMapOf[s] = germs[s] ?: placeholder
         }
         val blob = ExposedBlob(mutableMapOf.toByteArray())
         dbTransaction {
-            val update = PlayerItems.update(
-                { PlayerItems.name eq name }
-            ) {
-                it[items] = blob
-            }
+            val update = PlayerGermSlots.update({ PlayerGermSlots.name eq name }) { it[items] = blob }
             if (update != 1) {
-                PlayerItems.insert {
-                    it[PlayerItems.name] = name
+                PlayerGermSlots.insert {
+                    it[PlayerGermSlots.name] = name
                     it[items] = blob
                 }
             }
@@ -81,12 +82,34 @@ object PlayerItems : Table("player_items") {
         debug("&a已更新 &6${player.name} &7物品缓存, 耗时 &b${System.currentTimeMillis() - currentTimeMillis} &7毫秒")
     }
 
-    private fun Map<String, ItemStack>.toByteArray(): ByteArray {
+    fun uploadAll(sender: CommandSender? = null) {
+        var submit: BukkitTask? = null
+        val onlinePlayers = Bukkit.getOnlinePlayers()
+        if (onlinePlayers.isEmpty()) return
+        if (sender == null)
+            info("&6开始更新萌芽槽缓存...共 ${onlinePlayers.size} 人")
+        else sender.sendColorMessage("&6开始更新萌芽槽缓存...共 ${onlinePlayers.size} 人")
+        val iterator = onlinePlayers.iterator()
+        submit = submit(period = Config.germ__queue_delay, async = true) mit@{
+            if (!iterator.hasNext()) {
+                submit?.cancel()
+                if (sender == null)
+                    info("&a缓存更新结束")
+                else sender.sendColorMessage("&a缓存更新结束")
+                return@mit
+            }
+            val player = iterator.next()
+            if (player.isOnline)
+                upload(player)
+        }
+    }
+
+
+    fun Map<String, ItemStack>.toByteArray(): ByteArray {
         val outputStream = ByteArrayOutputStream()
         BukkitObjectOutputStream(outputStream).use {
             it.writeInt(this.size)
             this.forEach { (k, v) ->
-                v.toByteArray()
                 it.writeUTF(k)
                 it.writeObject(v)
             }
@@ -107,5 +130,15 @@ object PlayerItems : Table("player_items") {
             }
         }
         return mutableListOf
+    }
+
+    @EventHandler
+    fun onLogin(event: PlayerLoginEvent) {
+        if (Config.placeholder__offline_placeholders.isEmpty() || !DatabaseConfig.isConnected) return
+        val player = event.player
+        submit(async = true, delay = 100) {
+            if (!player.isOnline) return@submit
+            upload(player)
+        }
     }
 }

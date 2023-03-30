@@ -16,21 +16,21 @@ import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.toByteArray
 object GermSlots : Table("germ_slot") {
     //玩家名-萌芽id
     private val nameId = varchar("name_id", 255)
-    private var item = blob("item").nullable()
+    private var item = blob("slot_item").nullable()
 
     override val primaryKey = PrimaryKey(nameId)
 
     fun getByKey(key: String): ItemStack? {
         val blob = dbTransaction {
             GermSlots.slice(GermSlots.item)
-                .select { GermSlots.nameId eq key }.firstOrNull()?.get(item)
+                .select(GermSlots.nameId eq key)
+                .firstOrNull()?.get(GermSlots.item)
         }
         if (blob != null) {
             try {
                 return ItemUtils.fromByteArray(blob.bytes)
             } catch (e: Exception) {
                 warn("germ slot $key unable to deserialize to item")
-                //反序列化
             }
         }
         debug("${Bukkit.isPrimaryThread()} Germ slot -> get $key from database")
@@ -57,6 +57,7 @@ object GermSlots : Table("germ_slot") {
                 }
             }
         }
+        debug("update slot $key")
     }
 
     fun getKey(a: String, b: String) = "$a-$b"

@@ -289,8 +289,10 @@ abstract class StringEntityClass<out E : Entity<String>> constructor(
 ) : EntityClass<String, E>(table, entityType, entityCtor)
 
 object MySqlLogger : SqlLogger {
+    var enable = false
     override fun log(context: StatementContext, transaction: Transaction) {
-        debug("&6DEBUG SQL: &7${context.expandArgs(transaction)}")
+        if (enable)
+            info("&6DEBUG SQL: &7${context.expandArgs(transaction)}")
     }
 }
 
