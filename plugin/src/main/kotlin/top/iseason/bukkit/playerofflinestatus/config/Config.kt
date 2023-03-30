@@ -6,6 +6,7 @@ import org.bukkit.scheduler.BukkitTask
 import top.iseason.bukkit.playerofflinestatus.dto.GermSlotBackup
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
+import top.iseason.bukkit.playerofflinestatus.germ.GermHook
 import top.iseason.bukkittemplate.config.SimpleYAMLConfig
 import top.iseason.bukkittemplate.config.annotations.Comment
 import top.iseason.bukkittemplate.config.annotations.FilePath
@@ -60,7 +61,7 @@ object Config : SimpleYAMLConfig() {
     var germ: MemorySection? = null
 
     @Key
-    @Comment("", "", "是否开启,重启生效")
+    @Comment("", "是否开启,重启生效")
     var germ__enable = false
 
     @Key
@@ -158,12 +159,12 @@ object Config : SimpleYAMLConfig() {
                 PlayerPAPIs.uploadAll()
             }
         }
-        if (germ__enable && germ__update_period > 0) {
+        if (GermHook.hasHooked && germ__enable && germ__update_period > 0) {
             germTask = submit(period = germ__update_period, async = true, delay = placeholder__update_period) {
                 PlayerGermSlots.uploadAll()
             }
         }
-        if (germ_slot_backup__enable && germ_slot_backup__period > 0) {
+        if (GermHook.hasHooked && germ_slot_backup__enable && germ_slot_backup__period > 0) {
             germBackupTask = submit(async = true, delay = germ_slot_backup__period, period = germ_slot_backup__period) {
                 GermSlotBackup.backupAll()
             }

@@ -11,6 +11,7 @@ import top.iseason.bukkit.playerofflinestatus.config.Lang
 import top.iseason.bukkit.playerofflinestatus.dto.GermSlotBackup
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
+import top.iseason.bukkit.playerofflinestatus.germ.GermHook
 import top.iseason.bukkittemplate.command.*
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.MySqlLogger
@@ -22,51 +23,8 @@ import java.time.LocalDateTime
  * 插件的命令都在这
  */
 fun setupCommands() = command("PlayerOfflineStatus") {
-    alias = arrayOf("pos", "post", "pyos", "pofs")
+    alias = arrayOf("pos", "poss", "post")
     default = PermissionDefault.OP
-    node("reload") {
-        default = PermissionDefault.OP
-        async = true
-        description = "重载配置"
-        executor { _, sender ->
-            Config.load()
-            Lang.load()
-            DatabaseConfig.isAutoUpdate = false
-            DatabaseConfig.load()
-            DatabaseConfig.isAutoUpdate = true
-            sender.sendColorMessage("&a插件已重载!")
-        }
-    }
-    node("reConnect") {
-        description = "重新连接数据库"
-        default = PermissionDefault.OP
-        async = true
-        executor { _, sender ->
-            DatabaseConfig.reConnected()
-            sender.sendColorMessage("&a数据库已重新连接!")
-        }
-    }
-    node("debug") {
-        description = "切换debug模式"
-        default = PermissionDefault.OP
-        async = true
-        node("msg") {
-            description = "是否显示debug 消息"
-            default = PermissionDefault.OP
-            executor { _, sender ->
-                SimpleLogger.isDebug = !SimpleLogger.isDebug
-                sender.sendColorMessage("&aDebug 消息: &6${SimpleLogger.isDebug}")
-            }
-        }
-        node("sql") {
-            description = "是否显示 debug sql (数据库相关)"
-            default = PermissionDefault.OP
-            executor { _, sender ->
-                MySqlLogger.enable = !MySqlLogger.enable
-                sender.sendColorMessage("&aDebug SQL: &6${SimpleLogger.isDebug}")
-            }
-        }
-    }
 
     node("placeholder") {
         description = "离线变量相关"
@@ -103,6 +61,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             async = true
             param("<player>", suggestRuntime = ParamSuggestCache.playerParam)
             executor { params, sender ->
+                if (!GermHook.hasHooked || !Config.germ__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<Player>()
                 sender.sendColorMessage("&6正在保存玩家槽...")
@@ -115,6 +74,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             default = PermissionDefault.OP
             async = true
             executor { _, sender ->
+                if (!GermHook.hasHooked || !Config.germ__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 PlayerGermSlots.uploadAll(sender)
             }
@@ -128,7 +88,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             async = true
             param("<player>", suggestRuntime = ParamSuggestCache.playerParam)
             executor { params, sender ->
-                if (!Config.germ_slot_backup__enable) throw ParmaException("未开启萌芽槽备份功能!")
+                if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<String>()
                 val queryBackup = GermSlotBackup.queryBackup(player)
@@ -162,7 +122,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             param("<id>")
             isPlayerOnly = true
             executor { params, sender ->
-                if (!Config.germ_slot_backup__enable) throw ParmaException("未开启萌芽槽备份功能!")
+                if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val id = params.next<Int>()
                 val backupItemsDate = GermSlotBackup.getBackupItemsDate(id) ?: throw ParmaException("该ID没有数据!")
@@ -189,7 +149,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             param("<player>", suggestRuntime = ParamSuggestCache.playerParam)
             param("<id>")
             executor { params, sender ->
-                if (!Config.germ_slot_backup__enable) throw ParmaException("未开启萌芽槽备份功能!")
+                if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<Player>()
                 val id = params.next<Int>()
@@ -208,7 +168,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             async = true
             param("<player>", suggestRuntime = ParamSuggestCache.playerParam)
             executor { params, sender ->
-                if (!Config.germ_slot_backup__enable) throw ParmaException("未开启萌芽槽备份功能!")
+                if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<Player>()
                 GermSlotBackup.backup(player.name)
@@ -221,10 +181,53 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             description = "为所有玩家创建备份"
             default = PermissionDefault.OP
             async = true
-            executor { params, sender ->
-                if (!Config.germ_slot_backup__enable) throw ParmaException("未开启萌芽槽备份功能!")
+            executor { _, sender ->
+                if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 GermSlotBackup.backupAll(sender)
+            }
+        }
+    }
+    node("reload") {
+        default = PermissionDefault.OP
+        async = true
+        description = "重载配置"
+        executor { _, sender ->
+            Config.load()
+            Lang.load()
+            DatabaseConfig.isAutoUpdate = false
+            DatabaseConfig.load()
+            DatabaseConfig.isAutoUpdate = true
+            sender.sendColorMessage("&a插件已重载!")
+        }
+    }
+    node("reConnect") {
+        description = "重新连接数据库"
+        default = PermissionDefault.OP
+        async = true
+        executor { _, sender ->
+            DatabaseConfig.reConnected()
+            sender.sendColorMessage("&a数据库已重新连接!")
+        }
+    }
+    node("debug") {
+        description = "切换debug模式"
+        default = PermissionDefault.OP
+        async = true
+        node("msg") {
+            description = "是否显示 debug 消息"
+            default = PermissionDefault.OP
+            executor { _, sender ->
+                SimpleLogger.isDebug = !SimpleLogger.isDebug
+                sender.sendColorMessage("&aDebug 消息: &6${SimpleLogger.isDebug}")
+            }
+        }
+        node("sql") {
+            description = "是否显示 debug sql (数据库相关)"
+            default = PermissionDefault.OP
+            executor { _, sender ->
+                MySqlLogger.enable = !MySqlLogger.enable
+                sender.sendColorMessage("&aDebug SQL: &6${SimpleLogger.isDebug}")
             }
         }
     }

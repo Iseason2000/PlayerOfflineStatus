@@ -63,7 +63,24 @@ object PlayerOfflineStatus : BukkitPlugin {
         CommandHandler.updateCommands()
         Config.isInit = true
         Config.updateTask()
-        info("&a 插件已加载! &7请在变量前面添加 pos_[玩家名称]_ 使用离线变量")
+        val trimIndent = """
+            　
+               _ (`-.                .-')    
+              ( (OO  )              ( OO ).  
+             _.`     \ .-'),-----. (_)---\_) 
+            (__...--''( OO'  .-.  '/    _ |  
+             |  /  | |/   |  | |  |\  :` `.  
+             |  |_.' |\_) |  |\|  | '..`''.) 
+             |  .___.'  \ |  | |  |.-._)   \ 
+             |  |        `'  '-'  '\       / 
+             `--'          `-----'  `-----'  
+            　
+             作者: Iseason 
+             QQ: 1347811744
+             　
+        """.trimIndent()
+        info(trimIndent)
+        info("&a插件已加载! &7请在变量前面添加 pos_[玩家名称]_ 使用离线变量")
     }
 
     override fun onDisable() {
