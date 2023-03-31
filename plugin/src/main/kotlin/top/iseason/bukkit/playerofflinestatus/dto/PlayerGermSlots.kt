@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.update
 import top.iseason.bukkit.playerofflinestatus.config.Config
+import top.iseason.bukkit.playerofflinestatus.germ.GermListener
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.debug
@@ -79,6 +80,7 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
                 }
             }
         }
+        GermListener.removeCache(player.name)
         debug("&a已更新 &6${player.name} &7物品缓存, 耗时 &b${System.currentTimeMillis() - currentTimeMillis} &7毫秒")
     }
 

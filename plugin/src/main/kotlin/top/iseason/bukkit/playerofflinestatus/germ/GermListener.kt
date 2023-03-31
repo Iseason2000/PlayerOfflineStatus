@@ -12,6 +12,7 @@ import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs.papi
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.warn
+import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
 import top.iseason.bukkittemplate.utils.other.CoolDown
 import java.util.concurrent.ConcurrentHashMap
 
@@ -21,7 +22,7 @@ object GermListener : org.bukkit.event.Listener {
     private val coolDown = CoolDown<String>()
 
     @EventHandler
-    fun onGermOpen(event: GermReceiveDosEvent) {
+    fun onGermReceiveDosEvent(event: GermReceiveDosEvent) {
         if (event.dosId != "pos") return
         val dosContent = event.dosContent
         val germGuiPart = event.germGuiPart ?: return
@@ -32,16 +33,17 @@ object GermListener : org.bukkit.event.Listener {
         if (itemId == "body") {
             val germGuiEntity = germGuiPart as? GermGuiEntity ?: return
             val helmet = getItemCache(dosContent, player, "head")
-            if (helmet != null) germGuiEntity.helmet = helmet
+            if (!helmet.checkAir()) germGuiEntity.helmet = helmet
             val chestplate = getItemCache(dosContent, player, "chest")
-            if (chestplate != null) germGuiEntity.chestplate = chestplate
+            if (!chestplate.checkAir()) germGuiEntity.chestplate = chestplate
             val leggings = getItemCache(dosContent, player, "legs")
-            if (leggings != null) germGuiEntity.leggings = leggings
+            if (!leggings.checkAir()) germGuiEntity.leggings = leggings
             val boots = getItemCache(dosContent, player, "feet")
-            if (boots != null) germGuiEntity.boots = boots
+            if (!boots.checkAir()) germGuiEntity.boots = boots
             return
         }
         val item = getItemCache(dosContent, player, itemId) ?: return
+        if (item.checkAir()) return
         when (itemId) {
             "head" -> (germGuiPart as? GermGuiEntity)?.helmet = item
             "chest" -> (germGuiPart as? GermGuiEntity)?.chestplate = item
@@ -56,23 +58,29 @@ object GermListener : org.bukkit.event.Listener {
         }
     }
 
+    fun removeCache(name: String) {
+        playerCaches.remove(name)
+    }
 
     private fun getItemCache(key: String, name: String, itemName: String): ItemStack? {
         var item = playerCaches[name]?.get(itemName)
         //命中缓存不过期
-        if (item != null && (Config.germ__cache_time <= 0 || coolDown.check(key, Config.germ__cache_time))) {
+        val germCacheTime = Config.germ__cache_time
+        if (germCacheTime != 0L && item != null &&
+            (germCacheTime < 0 || coolDown.check(key, germCacheTime))
+        ) {
             return item
         }
         // 未命中的缓存
         val noCaChe = noCache.contains(key)
-        if (noCaChe && coolDown.check("nocache-${key}", 5000)) return null
+        if (noCaChe && coolDown.check("nocache-${key}", 1000)) return null
         val value = dbTransaction {
             PlayerGermSlots.slice(PlayerGermSlots.items).select {
                 PlayerGermSlots.name eq name
             }.limit(1).firstOrNull()?.get(PlayerGermSlots.items)
         }
         //未命中的警告
-        if (value == null && !coolDown.check(key, 5000)) {
+        if (value == null) {
             noCache.add(key)
             warn("Dos $papi 没有数据缓存，请检查名称或配置缓存!")
         } else // 未命中转已命中

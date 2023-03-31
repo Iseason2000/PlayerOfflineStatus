@@ -99,7 +99,8 @@ object Config : SimpleYAMLConfig() {
     @Key
     @Comment(
         "", "萌芽dos的缓存时间, 单位毫秒，用于防止高频读取导致数据库繁忙",
-        "-1 表示服务器运行时不过期"
+        "-1 表示服务器运行时不过期",
+        "0 表示禁用缓存，将实时从数据库获取"
     )
     var germ__cache_time = 600000L
 
