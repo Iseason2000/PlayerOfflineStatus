@@ -74,7 +74,7 @@ object PAPI : PlaceholderExpansion() {
             }
             if (value == null) {
                 noCache.add(key)
-                warn("变量 $papi 没有数据缓存，请检查名称或配置缓存!")
+                warn("变量 $key 没有数据缓存，请检查名称或配置缓存!")
             } else if (noCaChe) noCache.remove(key)
             return@Callable value ?: "961eeb25-56e1-4638-8ed8-38a79e39118e"
         }

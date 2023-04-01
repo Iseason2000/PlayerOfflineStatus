@@ -18,8 +18,10 @@ import org.jetbrains.exposed.sql.select
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkittemplate.config.dbTransaction
+import top.iseason.bukkittemplate.debug.debug
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
+import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.getDisplayName
 import top.iseason.bukkittemplate.utils.other.CoolDown
 import top.iseason.bukkittemplate.utils.other.submit
 import java.util.concurrent.Callable
@@ -72,6 +74,7 @@ object GermListener : org.bukkit.event.Listener {
             return
         }
         val item = getGermSlot(playerName, itemId, player)
+        debug("已设置 界面 ${event.germGuiScreen.hashCode()} 的 组件 ${germGuiPart.indexName} | $dosContent | ${item.type} | ${item.getDisplayName()}")
         when (germGuiPart) {
             is GermGuiSlot -> germGuiPart.itemStack = item
             is GermGuiItem -> germGuiPart.itemStack = item
