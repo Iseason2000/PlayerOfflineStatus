@@ -5,54 +5,78 @@ import com.germ.germplugin.api.dynamic.gui.GermGuiEntity
 import com.germ.germplugin.api.dynamic.gui.GermGuiItem
 import com.germ.germplugin.api.dynamic.gui.GermGuiSlot
 import com.germ.germplugin.api.event.GermReceiveDosEvent
+import com.google.common.cache.CacheBuilder
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.player.PlayerLoginEvent
 import org.bukkit.inventory.ItemStack
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.select
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
-import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs.papi
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
 import top.iseason.bukkittemplate.utils.other.CoolDown
 import top.iseason.bukkittemplate.utils.other.submit
+import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 object GermListener : org.bukkit.event.Listener {
-    private val playerCaches = hashMapOf<String, Map<String, ItemStack>>()
+    private val playerCaches = CacheBuilder.newBuilder()
+        .expireAfterWrite(max(Config.germ__cache_time, 0), TimeUnit.SECONDS)
+        .softValues()
+        .recordStats()
+        .build<String, Map<String, ItemStack>>()
+
     private val noCache = ConcurrentHashMap.newKeySet<String>()
     private val coolDown = CoolDown<String>()
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     fun onGermReceiveDosEvent(event: GermReceiveDosEvent) {
         if (event.dosId != "pos") return
         val dosContent = event.dosContent.trim()
         val germGuiPart = event.germGuiPart ?: return
         val split = dosContent.split('@', limit = 2)
         if (split.size != 2) return
-        val player = split[0]
+        val playerName = split[0]
         val itemId = split[1]
-        if (itemId.startsWith("body")) {
+        val player = Bukkit.getPlayerExact(playerName)
+        if (itemId == "body" || itemId == "body_with_hands") {
             val germGuiEntity = germGuiPart as? GermGuiEntity ?: return
-            germGuiEntity.helmet = getGermSlot(player, "germplugin_armor_helmet")
-            germGuiEntity.chestplate = getGermSlot(player, "germplugin_armor_chestplate")
-            germGuiEntity.leggings = getGermSlot(player, "germplugin_armor_leggings")
-            germGuiEntity.boots = getGermSlot(player, "germplugin_armor_boots")
+            val helmet = getGermSlot(playerName, "germplugin_armor_helmet", player)
+            if (!helmet.checkAir())
+                germGuiEntity.helmet = helmet
+            val chestplate = getGermSlot(playerName, "germplugin_armor_chestplate", player)
+            if (!chestplate.checkAir())
+                germGuiEntity.chestplate = chestplate
+            val leggings = getGermSlot(playerName, "germplugin_armor_leggings", player)
+            if (!leggings.checkAir())
+                germGuiEntity.leggings = leggings
+            val boots = getGermSlot(playerName, "germplugin_armor_boots", player)
+            if (!boots.checkAir())
+                germGuiEntity.boots = boots
             if (itemId == "body_with_hands") {
-                germGuiEntity.mainHand = getGermSlot(player, "germplugin_main_hand")
-                germGuiEntity.offHand = getGermSlot(player, "germplugin_off_hand")
+                val mainHand = getGermSlot(playerName, "germplugin_main_hand", player)
+                if (!mainHand.checkAir())
+                    germGuiEntity.mainHand = mainHand
+                val offHand = getGermSlot(playerName, "germplugin_off_hand", player)
+                if (!offHand.checkAir())
+                    germGuiEntity.offHand = offHand
             }
             return
         }
-        val item = getGermSlot(player, itemId)
+        val item = getGermSlot(playerName, itemId, player)
         when (germGuiPart) {
             is GermGuiSlot -> germGuiPart.itemStack = item
             is GermGuiItem -> germGuiPart.itemStack = item
             is GermGuiEntity -> {
+                if (item.checkAir()) return
                 when (itemId) {
                     "germplugin_armor_helmet" -> germGuiPart.helmet = item
                     "germplugin_armor_chestplate" -> germGuiPart.chestplate = item
@@ -65,12 +89,13 @@ object GermListener : org.bukkit.event.Listener {
         }
     }
 
-    fun removeCache(name: String) {
-        playerCaches.remove(name)
+    fun getCacheStats() = playerCaches.stats()
+
+    fun putCache(name: String, map: Map<String, ItemStack>) {
+        playerCaches.put(name, map)
     }
 
-    private fun getGermSlot(name: String, id: String): ItemStack {
-        val player = Bukkit.getPlayer(name)
+    private fun getGermSlot(name: String, id: String, player: Player? = null): ItemStack {
         if (player != null && Config.germ__proxy_online) {
             return GermSlotAPI.getItemStackFromIdentity(player, id)
         }
@@ -78,40 +103,32 @@ object GermListener : org.bukkit.event.Listener {
     }
 
     private fun getItemCache(name: String, itemName: String): ItemStack? {
-        var item = playerCaches[name]?.get(itemName)
         val key = "$name@$itemName"
-        //命中缓存不过期
-        val germCacheTime = Config.germ__cache_time
-        if (germCacheTime != 0L && item != null &&
-            (germCacheTime < 0 || coolDown.check(key, germCacheTime))
-        ) {
-            return item
-        }
         // 未命中的缓存
         val noCaChe = noCache.contains(key)
-        if (noCaChe && coolDown.check("nocache-${key}", 3000)) return null
-        val value = dbTransaction {
-            PlayerGermSlots
-                .slice(PlayerGermSlots.items)
-                .select(PlayerGermSlots.name eq name)
-                .limit(1)
-                .firstOrNull()
-                ?.get(PlayerGermSlots.items)
+        if (noCaChe && coolDown.check("nocache-${key}", 2000)) return null
+        val callable = Callable {
+            val value = dbTransaction {
+                PlayerGermSlots
+                    .slice(PlayerGermSlots.items)
+                    .select(PlayerGermSlots.name eq name)
+                    .limit(1)
+                    .firstOrNull()
+                    ?.get(PlayerGermSlots.items)
+            }
+            if (value != null) {
+                return@Callable PlayerGermSlots.fromByteArray(value.bytes)
+            } else if (!noCaChe) {
+                noCache.add("nocache-${key}")
+                warn("Dos pos<->$key 没有数据缓存，请检查名称或配置缓存!")
+            } else noCache.remove(key)
+            return@Callable emptyMap()
         }
-        //未命中的警告
-        if (value == null) {
-            noCache.add(key)
-            warn("Dos pos<->$key 没有数据缓存，请检查名称或配置缓存!")
-        } else // 未命中转已命中
-            if (noCaChe) noCache.remove(key)
-        //更新缓存
-        if (value != null) {
-            val fromByteArray = PlayerGermSlots.fromByteArray(value.bytes)
-            playerCaches[name] = fromByteArray
-            item = fromByteArray[itemName]
+        //不要缓存
+        if (Config.germ__cache_time < 0) {
+            return callable.call()[name]
         }
-        if (item == null) noCache.add(key)
-        return item
+        return playerCaches.get(key, callable)[name]
     }
 
     @EventHandler

@@ -1,5 +1,6 @@
 package top.iseason.bukkit.playerofflinestatus.papi
 
+import com.google.common.cache.CacheBuilder
 import me.clip.placeholderapi.expansion.PlaceholderExpansion
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
@@ -11,12 +12,23 @@ import top.iseason.bukkittemplate.BukkitTemplate
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.utils.other.CoolDown
+import java.lang.StringBuilder
+import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 object PAPI : PlaceholderExpansion() {
-    private val papiCache = ConcurrentHashMap<String, String>()
+    private val papiCache = CacheBuilder.newBuilder()
+        .softValues()
+        .expireAfterWrite(max(Config.placeholder__cache_time, 0), TimeUnit.SECONDS)
+        .recordStats()
+        .build<String, String>()
     private val noCache = ConcurrentHashMap.newKeySet<String>()
     private val coolDown = CoolDown<String>()
+
+    fun getCacheStats() = papiCache.stats()
+
     override fun getIdentifier(): String {
         return "pos"
     }
@@ -43,34 +55,38 @@ object PAPI : PlaceholderExpansion() {
         return getCachePAPI(params, playerName, papi)
     }
 
+    fun putCache(key: String, papi: String) {
+        papiCache.put(key, papi)
+    }
+
     /**
      * 获取缓存的变量
      */
     private fun getCachePAPI(key: String, name: String, papi: String): String? {
-        var value = papiCache[key]
-        //命中缓存不过期
-        val papiCacheTime = Config.placeholder__cache_time
-        if (value != null && papiCacheTime != 0L &&
-            (papiCacheTime < 0 || coolDown.check(key, papiCacheTime))
-        ) {
-            return value
-        }
         // 未命中的缓存
         val noCaChe = noCache.contains(key)
         if (noCaChe && coolDown.check("nocache-${papi}", 2000)) return null
-        value = dbTransaction {
-            PlayerPAPIs.slice(PlayerPAPIs.value).select {
-                PlayerPAPIs.name eq name and (PlayerPAPIs.papi eq papi)
-            }.limit(1).firstOrNull()?.get(PlayerPAPIs.value)
+        val callable = Callable {
+            val value = dbTransaction {
+                PlayerPAPIs.slice(PlayerPAPIs.value).select {
+                    PlayerPAPIs.name eq name and (PlayerPAPIs.papi eq papi)
+                }.limit(1).firstOrNull()?.get(PlayerPAPIs.value)
+            }
+            if (value == null) {
+                noCache.add(key)
+                warn("变量 $papi 没有数据缓存，请检查名称或配置缓存!")
+            } else if (noCaChe) noCache.remove(key)
+            return@Callable value ?: "961eeb25-56e1-4638-8ed8-38a79e39118e"
         }
-        //未命中的警告
-        if (value == null) {
-            noCache.add(key)
-            warn("变量 $papi 没有数据缓存，请检查名称或配置缓存!")
-        } else if (noCaChe) noCache.remove(key)
-        //更新缓存
-        if (value != null)
-            papiCache[key] = value
-        return value
+        //不要缓存
+        if (Config.placeholder__cache_time < 0) {
+            return callable.call()
+        }
+        val v = papiCache.get(key, callable)
+        if (v == "961eeb25-56e1-4638-8ed8-38a79e39118e") {
+            papiCache.invalidate(key)
+            return null
+        }
+        return v
     }
 }

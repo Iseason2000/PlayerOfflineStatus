@@ -30,7 +30,6 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
-    private val placeholder = ItemStack(Material.AIR)
     private val id = integer("id").autoIncrement()
     var name = varchar("name", 255)
     var items = blob("items")
@@ -46,8 +45,9 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
     fun upload(player: Player) {
         val currentTimeMillis = System.currentTimeMillis()
         val name = player.name
-        val keys = Config.germ__offline_slots
-        val germs = GermSlotAPI.getGermSlotIdentitysAndItemStacks(player, keys)
+        val germs = Config.germ__offline_slots.associateWith { GermSlotAPI.getItemStackFromIdentity(player, it) }
+        //更新缓存
+        GermListener.putCache(player.name, germs)
         val blob = ExposedBlob(germs.toByteArray())
         dbTransaction {
             val update = PlayerGermSlots.update({ PlayerGermSlots.name eq name }) { it[items] = blob }
@@ -58,7 +58,6 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
                 }
             }
         }
-        GermListener.removeCache(player.name)
         debug("&a已更新 &6${player.name} &7物品缓存, 耗时 &b${System.currentTimeMillis() - currentTimeMillis} &7毫秒")
     }
 

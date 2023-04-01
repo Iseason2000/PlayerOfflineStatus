@@ -45,11 +45,10 @@ object Config : SimpleYAMLConfig() {
 
     @Key
     @Comment(
-        "", "papi的缓存时间, 单位毫秒，用于防止高频读取导致数据库繁忙",
-        " -1 表示服务器运行时缓存不过期",
-        " 0 表示禁用缓存"
+        "", "papi的缓存时间, 单位秒，用于防止高频读取导致数据库繁忙, 重启生效",
+        " -1 表示禁用缓存",
     )
-    var placeholder__cache_time = 30000L
+    var placeholder__cache_time = 30L
 
     @Key
     @Comment(
@@ -66,7 +65,7 @@ object Config : SimpleYAMLConfig() {
     var germ__enable = false
 
     @Key
-    @Comment("", "当玩家上线时是否显示实时的槽")
+    @Comment("", "当玩家在线时是否显示实时的槽")
     var germ__proxy_online: Boolean = true
 
     @Key
@@ -107,11 +106,10 @@ object Config : SimpleYAMLConfig() {
 
     @Key
     @Comment(
-        "", "萌芽dos的缓存时间, 单位毫秒，用于防止高频读取导致数据库繁忙",
-        "-1 表示服务器运行时不过期",
-        "0 表示禁用缓存，将实时从数据库获取"
+        "", "萌芽dos的缓存时间, 单位秒，用于防止高频读取导致数据库繁忙, 重启生效",
+        "-1 表示禁用缓存，将实时从数据库获取",
     )
-    var germ__cache_time = 600000L
+    var germ__cache_time = 600L
 
     @Key
     @Comment("", "接管萌芽的槽，如果是第一次用会导致原来的槽数据丢失，请注意,重启生效。")

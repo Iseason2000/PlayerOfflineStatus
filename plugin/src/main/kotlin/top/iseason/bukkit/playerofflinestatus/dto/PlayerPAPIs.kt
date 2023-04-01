@@ -11,6 +11,7 @@ import org.bukkit.scheduler.BukkitTask
 import org.jetbrains.exposed.sql.*
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.germ.GermHook
+import top.iseason.bukkit.playerofflinestatus.papi.PAPI
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.debug
@@ -37,6 +38,7 @@ object PlayerPAPIs : Table("player_papi"), org.bukkit.event.Listener {
         val name = player.name
         Config.placeholder__offline_placeholders.forEach { papi ->
             val result = getPAPIResult(player, papi) ?: return@forEach
+            PAPI.putCache(papi, result)
             val update = dbTransaction {
                 PlayerPAPIs.update(
                     { PlayerPAPIs.name eq name and (PlayerPAPIs.papi eq papi) }

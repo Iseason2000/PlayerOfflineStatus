@@ -1,6 +1,7 @@
 package top.iseason.bukkit.playerofflinestatus.command
 
 import com.germ.germplugin.api.GermSlotAPI
+import com.google.common.cache.CacheStats
 import net.md_5.bungee.api.chat.ClickEvent
 import net.md_5.bungee.api.chat.TextComponent
 import org.bukkit.Bukkit
@@ -12,12 +13,15 @@ import top.iseason.bukkit.playerofflinestatus.dto.GermSlotBackup
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
 import top.iseason.bukkit.playerofflinestatus.germ.GermHook
+import top.iseason.bukkit.playerofflinestatus.germ.GermListener
+import top.iseason.bukkit.playerofflinestatus.papi.PAPI
 import top.iseason.bukkittemplate.command.*
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.MySqlLogger
 import top.iseason.bukkittemplate.debug.SimpleLogger
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
 import top.iseason.bukkittemplate.utils.bukkit.MessageUtils.sendColorMessage
+import java.lang.StringBuilder
 import java.time.LocalDateTime
 
 /**
@@ -226,8 +230,31 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             default = PermissionDefault.OP
             executor { _, sender ->
                 MySqlLogger.enable = !MySqlLogger.enable
-                sender.sendColorMessage("&aDebug SQL: &6${SimpleLogger.isDebug}")
+                sender.sendColorMessage("&aDebug SQL: &6${MySqlLogger.enable}")
+            }
+        }
+
+        node("cache") {
+            description = "输出缓存情况"
+            default = PermissionDefault.OP
+            fun CacheStats.toStr(): String {
+                val stringBuilder = StringBuilder()
+                stringBuilder.append("请求数: ")
+                stringBuilder.append(requestCount())
+                stringBuilder.append(" | 命中率: ")
+                stringBuilder.append("%.2f".format(hitRate()))
+                stringBuilder.append(" | 平均SQL耗时: ")
+                stringBuilder.append("%.2f".format(averageLoadPenalty() / 1000000))
+                stringBuilder.append(" 毫秒")
+                return stringBuilder.toString()
+            }
+            executor { _, sender ->
+                sender.sendColorMessage("&a变量: &7${PAPI.getCacheStats().toStr()}")
+                if (Config.germ__enable)
+                    sender.sendColorMessage("&6萌芽: &7${GermListener.getCacheStats().toStr()}")
             }
         }
     }
 }
+
+

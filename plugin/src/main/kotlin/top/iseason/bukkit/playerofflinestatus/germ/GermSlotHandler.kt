@@ -33,7 +33,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         }
     }
 
-    override fun getFromIdentitys(name: String?, ids: MutableCollection<String>?): MutableMap<String, ItemStack> {
+    override fun getFromIdentitys(name: String?, ids: MutableCollection<String>?): Map<String, ItemStack> {
         if (name == null || ids == null) return mutableMapOf()
         return ids
             .associateWith {
@@ -41,7 +41,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
                 if (player != null)
                     GermSlotAPI.getItemStackFromIdentity(player, it)
                 else getFromIdentity(name, it)
-            }.toMutableMap()
+            }
     }
 
     override fun getFromIdentity(name: String?, identity: String?): ItemStack {
@@ -77,14 +77,14 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         }
     }
 
-    private fun getPlayerCache(player: String): MutableMap<String, ItemStack> {
+    private fun getPlayerCache(player: String): Map<String, ItemStack> {
         return getFromIdentitys(player, keys)
     }
 
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
         val name = event.player.name
-        submit(async = true, delay = 20) {
+        submit(async = true) {
             keys.forEach {
                 val key = GermSlots.getKey(name, it)
                 GermSlots.setItem(key, map[key])
@@ -102,7 +102,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         }
     }
 
-    fun updateGracefully() {
+    private fun updateGracefully() {
         GermSlotIds.upload()
         if (map.keys.isEmpty()) return
         val list = LinkedList(map.keys.shuffled())
@@ -111,7 +111,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         task = submit(async = true, period = 1) {
             if (list.isEmpty()) {
                 task?.cancel()
-                debug("updated $size slots to database")
+                debug("总共更新了 $size 个槽")
             } else {
                 val key = list.pop()
                 val itemStack = map[key]
