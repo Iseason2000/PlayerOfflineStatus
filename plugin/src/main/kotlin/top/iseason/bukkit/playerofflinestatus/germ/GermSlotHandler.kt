@@ -84,7 +84,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
         val name = event.player.name
-        submit(async = true) {
+        submit(async = true, delay = 5) {
             keys.forEach {
                 val key = GermSlots.getKey(name, it)
                 GermSlots.setItem(key, map[key])

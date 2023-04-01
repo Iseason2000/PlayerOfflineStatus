@@ -12,6 +12,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.player.PlayerLoginEvent
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.ItemStack
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.select
@@ -38,6 +39,8 @@ object GermListener : org.bukkit.event.Listener {
 
     private val noCache = ConcurrentHashMap.newKeySet<String>()
     private val coolDown = CoolDown<String>()
+
+    private val empty = emptyMap<String, ItemStack>()
 
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onGermReceiveDosEvent(event: GermReceiveDosEvent) {
@@ -109,7 +112,7 @@ object GermListener : org.bukkit.event.Listener {
         val key = "$name@$itemName"
         // 未命中的缓存
         val noCaChe = noCache.contains(key)
-        if (noCaChe && coolDown.check("nocache-${key}", 2000)) return null
+        if (noCaChe && coolDown.check(key, 2000)) return null
         val callable = Callable {
             val value = dbTransaction {
                 PlayerGermSlots
@@ -122,16 +125,21 @@ object GermListener : org.bukkit.event.Listener {
             if (value != null) {
                 return@Callable PlayerGermSlots.fromByteArray(value.bytes)
             } else if (!noCaChe) {
-                noCache.add("nocache-${key}")
+                noCache.add(key)
                 warn("Dos pos<->$key 没有数据缓存，请检查名称或配置缓存!")
             } else noCache.remove(key)
-            return@Callable emptyMap()
+            return@Callable empty
         }
         //不要缓存
         if (Config.germ__cache_time < 0) {
-            return callable.call()[name]
+            return callable.call()[itemName]
         }
-        return playerCaches.get(key, callable)[name]
+        val get = playerCaches.get(key, callable)
+        if (get == empty) {
+            playerCaches.invalidate(key)
+            return null
+        }
+        return playerCaches.get(key, callable)[itemName]
     }
 
     @EventHandler
@@ -140,6 +148,14 @@ object GermListener : org.bukkit.event.Listener {
         submit(async = true, delay = 100) {
             if (player.isOnline)
                 PlayerGermSlots.upload(player)
+        }
+    }
+
+    @EventHandler
+    fun onQuit(event: PlayerQuitEvent) {
+        val player = event.player
+        submit(async = true) {
+            PlayerGermSlots.upload(player)
         }
     }
 }
