@@ -41,36 +41,14 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
     }
 
     /**
-     * 删除玩家的槽到数据库
+     * 更新玩家的槽到数据库
      */
     fun upload(player: Player) {
         val currentTimeMillis = System.currentTimeMillis()
         val name = player.name
-        val mutableMapOf = mutableMapOf<String, ItemStack>()
-        // 解析原版的
         val keys = Config.germ__offline_slots
-        val hashSet = HashSet(keys)
-        if (hashSet.contains("head")) {
-            mutableMapOf["head"] = player.equipment?.helmet ?: placeholder
-            hashSet.remove("head")
-        }
-        if (hashSet.contains("chest")) {
-            mutableMapOf["chest"] = player.equipment?.chestplate ?: placeholder
-            hashSet.remove("chest")
-        }
-        if (hashSet.contains("legs")) {
-            mutableMapOf["legs"] = player.equipment?.leggings ?: placeholder
-            hashSet.remove("legs")
-        }
-        if (hashSet.contains("feet")) {
-            mutableMapOf["feet"] = player.equipment?.boots ?: placeholder
-            hashSet.remove("feet")
-        }
-        val germs = GermSlotAPI.getGermSlotIdentitysAndItemStacks(player, hashSet)
-        for (s in hashSet) {
-            mutableMapOf[s] = germs[s] ?: placeholder
-        }
-        val blob = ExposedBlob(mutableMapOf.toByteArray())
+        val germs = GermSlotAPI.getGermSlotIdentitysAndItemStacks(player, keys)
+        val blob = ExposedBlob(germs.toByteArray())
         dbTransaction {
             val update = PlayerGermSlots.update({ PlayerGermSlots.name eq name }) { it[items] = blob }
             if (update != 1) {

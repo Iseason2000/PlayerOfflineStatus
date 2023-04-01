@@ -1,6 +1,7 @@
 package top.iseason.bukkit.playerofflinestatus.germ
 
 import com.germ.germplugin.api.GermSlotAPI
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.event.EventHandler
 import org.bukkit.event.player.PlayerLoginEvent
@@ -35,7 +36,12 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
     override fun getFromIdentitys(name: String?, ids: MutableCollection<String>?): MutableMap<String, ItemStack> {
         if (name == null || ids == null) return mutableMapOf()
         return ids
-            .associateWith { getFromIdentity(name, it) }.toMutableMap()
+            .associateWith {
+                val player = Bukkit.getPlayer(name)
+                if (player != null)
+                    GermSlotAPI.getItemStackFromIdentity(player, it)
+                else getFromIdentity(name, it)
+            }.toMutableMap()
     }
 
     override fun getFromIdentity(name: String?, identity: String?): ItemStack {
@@ -89,8 +95,10 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
 
     @EventHandler
     fun onPlayerLogin(event: PlayerLoginEvent) {
-        submit(async = true) {
-            getPlayerCache(event.player.name)
+        val player = event.player
+        submit(async = true, delay = 20) {
+            if (player.isOnline)
+                getPlayerCache(player.name)
         }
     }
 

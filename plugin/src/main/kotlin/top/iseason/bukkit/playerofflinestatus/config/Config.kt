@@ -46,7 +46,8 @@ object Config : SimpleYAMLConfig() {
     @Key
     @Comment(
         "", "papi的缓存时间, 单位毫秒，用于防止高频读取导致数据库繁忙",
-        "-1 表示服务器运行时不过期"
+        " -1 表示服务器运行时缓存不过期",
+        " 0 表示禁用缓存"
     )
     var placeholder__cache_time = 30000L
 
@@ -65,20 +66,28 @@ object Config : SimpleYAMLConfig() {
     var germ__enable = false
 
     @Key
+    @Comment("", "当玩家上线时是否显示实时的槽")
+    var germ__proxy_online: Boolean = true
+
+    @Key
     @Comment(
         "",
-        "插件保存的装备",
-        "model_开头表示界面的模型",
-        "head、chest、legs、feet 分别对应实体 头、胸甲、腿、脚",
-        "除以上都是萌芽槽ID",
+        "插件保存的萌芽槽",
+        "germplugin_armor_helmet 支持实体 头部",
+        "germplugin_armor_chestplate 支持实体 胸部",
+        "germplugin_armor_leggings 支持实体 腿部",
+        "germplugin_armor_boots 支持实体 鞋子",
+        "germplugin_main_hand 支持实体 主手",
+        "germplugin_off_hand 支持实体 副手",
         "dos格式为 pos<->玩家ID@装备id",
-        "对于实体有 pos<->玩家ID@body 一次设置装备",
+        "对于实体有 pos<->玩家ID@body 一次设置4个装备",
+        "对于实体有 pos<->玩家ID@body_with_hands 一次设置4个装备+2只手",
     )
     var germ__offline_slots = setOf(
-        "head",
-        "chest",
-        "legs",
-        "feet"
+        "germplugin_armor_helmet",
+        "germplugin_armor_chestplate",
+        "germplugin_armor_leggings",
+        "germplugin_armor_boots"
     )
 
     @Key

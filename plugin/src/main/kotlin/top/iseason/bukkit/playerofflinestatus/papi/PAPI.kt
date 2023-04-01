@@ -49,23 +49,25 @@ object PAPI : PlaceholderExpansion() {
     private fun getCachePAPI(key: String, name: String, papi: String): String? {
         var value = papiCache[key]
         //命中缓存不过期
-        if (value != null && (Config.placeholder__cache_time <= 0 || coolDown.check(key, Config.placeholder__cache_time))) {
+        val papiCacheTime = Config.placeholder__cache_time
+        if (value != null && papiCacheTime != 0L &&
+            (papiCacheTime < 0 || coolDown.check(key, papiCacheTime))
+        ) {
             return value
         }
         // 未命中的缓存
         val noCaChe = noCache.contains(key)
-        if (noCaChe && coolDown.check("nocache-${papi}", 5000)) return null
+        if (noCaChe && coolDown.check("nocache-${papi}", 2000)) return null
         value = dbTransaction {
             PlayerPAPIs.slice(PlayerPAPIs.value).select {
                 PlayerPAPIs.name eq name and (PlayerPAPIs.papi eq papi)
             }.limit(1).firstOrNull()?.get(PlayerPAPIs.value)
         }
         //未命中的警告
-        if (value == null && !coolDown.check(papi, 5000)) {
+        if (value == null) {
             noCache.add(key)
             warn("变量 $papi 没有数据缓存，请检查名称或配置缓存!")
-        } else // 未命中转已命中
-            if (noCaChe) noCache.remove(key)
+        } else if (noCaChe) noCache.remove(key)
         //更新缓存
         if (value != null)
             papiCache[key] = value
