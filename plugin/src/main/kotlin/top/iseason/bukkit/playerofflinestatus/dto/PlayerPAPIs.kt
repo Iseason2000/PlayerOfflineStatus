@@ -63,6 +63,7 @@ object PlayerPAPIs : Table("player_papi"), org.bukkit.event.Listener {
         var submit: BukkitTask? = null
         val onlinePlayers = Bukkit.getOnlinePlayers()
         if (onlinePlayers.isEmpty()) return
+        var time = 0L
         if (sender == null)
             info("&6开始更新变量缓存...共 ${onlinePlayers.size} 人")
         else sender.sendColorMessage("&6开始更新变量缓存...共 ${onlinePlayers.size} 人")
@@ -71,12 +72,14 @@ object PlayerPAPIs : Table("player_papi"), org.bukkit.event.Listener {
             if (!iterator.hasNext()) {
                 submit?.cancel()
                 if (sender == null)
-                    info("&a变量缓存更新结束")
-                else sender.sendColorMessage("&a变量缓存更新结束")
+                    info("&a变量缓存更新结束, SQL耗时 $time 毫秒")
+                else sender.sendColorMessage("&a变量缓存更新结束, SQL耗时 $time 毫秒")
                 return@mit
             }
             val player = iterator.next()
+            val currentTimeMillis = System.currentTimeMillis()
             upload(player)
+            time += (System.currentTimeMillis() - currentTimeMillis)
         }
     }
 

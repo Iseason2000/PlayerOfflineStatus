@@ -3,7 +3,9 @@ package top.iseason.bukkit.playerofflinestatus.command
 import com.germ.germplugin.api.GermSlotAPI
 import com.google.common.cache.CacheStats
 import net.md_5.bungee.api.chat.ClickEvent
+import net.md_5.bungee.api.chat.HoverEvent
 import net.md_5.bungee.api.chat.TextComponent
+import net.md_5.bungee.api.chat.hover.content.Text
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.permissions.PermissionDefault
@@ -12,6 +14,7 @@ import top.iseason.bukkit.playerofflinestatus.config.Lang
 import top.iseason.bukkit.playerofflinestatus.dto.GermSlotBackup
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
+import top.iseason.bukkit.playerofflinestatus.germ.GermBackupListener
 import top.iseason.bukkit.playerofflinestatus.germ.GermHook
 import top.iseason.bukkit.playerofflinestatus.germ.GermListener
 import top.iseason.bukkit.playerofflinestatus.papi.PAPI
@@ -102,7 +105,12 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 if (queryBackup.isEmpty()) throw ParmaException("该玩家没有数据备份!")
                 val isPlayer = sender is Player
                 queryBackup.forEach { (id, time) ->
-                    val message = TextComponent("ID: $id 时间: $time")
+                    val message = TextComponent("ID: ")
+                    val idClick = TextComponent(id.toString())
+                    idClick.clickEvent = ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, id.toString())
+                    idClick.hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text("点击复制"))
+                    message.addExtra(idClick)
+                    message.addExtra(" 时间: $time")
                     if (isPlayer) {
                         val clickOpen = TextComponent("[点击打开]")
                         clickOpen.clickEvent =
@@ -128,17 +136,20 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             default = PermissionDefault.OP
             async = true
             param("<id>")
+            param("[page]")
             isPlayerOnly = true
             executor { params, sender ->
                 if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
-                val id = params.next<Int>()
-                val backupItemsDate = GermSlotBackup.getBackupItemsDate(id) ?: throw ParmaException("该ID没有数据!")
-                val items = PlayerGermSlots.fromByteArray(backupItemsDate.bytes)
+                val id = params.next<Long>()
+                val page = params.nextOrDefault<Int>(0)
+                val items = GermBackupListener.getBackupCaches(id.toString())
+                if (items.isEmpty()) throw ParmaException("该ID没有数据!")
                 val player = sender as Player
+                val chunked = items.entries.chunked(54)
+                val pageItems = chunked.getOrNull(page) ?: throw ParmaException("该页没有数据")
                 val inventory = Bukkit.createInventory(player, 54, "备份ID: $id   修改是没有意义的")
-                items.forEach { (_, item) ->
-                    if (item.checkAir()) return@forEach
+                pageItems.forEach { (_, item) ->
                     inventory.addItem(item)
                 }
                 player.openInventory(inventory)
@@ -155,9 +166,9 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<Player>()
-                val id = params.next<Int>()
-                val backupItemsDate = GermSlotBackup.getBackupItemsDate(id) ?: throw ParmaException("该ID没有数据!")
-                val items = PlayerGermSlots.fromByteArray(backupItemsDate.bytes)
+                val id = params.next<Long>()
+                val items = GermBackupListener.getBackupCaches(id.toString()) ?: throw ParmaException("该ID没有数据!")
+                if (items.isEmpty()) throw ParmaException("该ID没有数据!")
                 items.forEach { (key, item) ->
                     GermSlotAPI.saveItemStackToDatabase(player, key, item)
                 }
@@ -252,6 +263,8 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 sender.sendColorMessage("&a变量: &7${PAPI.getCacheStats().toStr()}")
                 if (Config.germ__enable)
                     sender.sendColorMessage("&6萌芽: &7${GermListener.getCacheStats().toStr()}")
+                if (Config.germ_slot_backup__enable)
+                    sender.sendColorMessage("&b萌芽备份: &7${GermBackupListener.getCacheStats().toStr()}")
             }
         }
     }

@@ -6,6 +6,7 @@ import com.germ.germplugin.api.dynamic.gui.GermGuiItem
 import com.germ.germplugin.api.dynamic.gui.GermGuiSlot
 import com.germ.germplugin.api.event.GermReceiveDosEvent
 import com.google.common.cache.CacheBuilder
+import com.google.common.cache.CacheStats
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -44,7 +45,7 @@ object GermListener : org.bukkit.event.Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onGermReceiveDosEvent(event: GermReceiveDosEvent) {
-        if (event.dosId != "pos") return
+        if (event.dosId != Config.germ__dos_id) return
         val dosContent = event.dosContent.trim()
         val germGuiPart = event.germGuiPart ?: return
         val split = dosContent.split('@', limit = 2)
@@ -95,7 +96,7 @@ object GermListener : org.bukkit.event.Listener {
         }
     }
 
-    fun getCacheStats() = playerCaches.stats()
+    fun getCacheStats(): CacheStats = playerCaches.stats()
 
     fun putCache(name: String, map: Map<String, ItemStack>) {
         playerCaches.put(name, map)
@@ -139,7 +140,7 @@ object GermListener : org.bukkit.event.Listener {
             playerCaches.invalidate(key)
             return null
         }
-        return playerCaches.get(key, callable)[itemName]
+        return get[itemName]
     }
 
     @EventHandler

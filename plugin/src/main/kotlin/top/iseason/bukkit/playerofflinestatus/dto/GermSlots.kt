@@ -57,7 +57,7 @@ object GermSlots : Table("germ_slot") {
                 }
             }
         }
-        debug("update slot $key")
+        debug("已更新槽 $key")
     }
 
     fun getKey(a: String, b: String) = "$a-$b"

@@ -17,6 +17,7 @@ import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.update
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.germ.GermListener
+import top.iseason.bukkit.playerofflinestatus.util.Snowflake
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.debug
@@ -30,7 +31,8 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
-    private val id = integer("id").autoIncrement()
+    private val snowflake = Snowflake(Config.serverId)
+    private val id = long("id")
     var name = varchar("name", 255)
     var items = blob("items")
     override val primaryKey = PrimaryKey(id)
@@ -53,8 +55,9 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
             val update = PlayerGermSlots.update({ PlayerGermSlots.name eq name }) { it[items] = blob }
             if (update != 1) {
                 PlayerGermSlots.insert {
+                    it[PlayerGermSlots.id] = snowflake.nextId()
                     it[PlayerGermSlots.name] = name
-                    it[items] = blob
+                    it[PlayerGermSlots.items] = blob
                 }
             }
         }

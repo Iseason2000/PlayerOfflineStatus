@@ -1,6 +1,7 @@
 package top.iseason.bukkit.playerofflinestatus.papi
 
 import com.google.common.cache.CacheBuilder
+import com.google.common.cache.CacheStats
 import me.clip.placeholderapi.expansion.PlaceholderExpansion
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
@@ -27,7 +28,7 @@ object PAPI : PlaceholderExpansion() {
     private val noCache = ConcurrentHashMap.newKeySet<String>()
     private val coolDown = CoolDown<String>()
 
-    fun getCacheStats() = papiCache.stats()
+    fun getCacheStats(): CacheStats = papiCache.stats()
 
     override fun getIdentifier(): String {
         return "pos"

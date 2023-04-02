@@ -46,7 +46,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
 
     override fun getFromIdentity(name: String?, identity: String?): ItemStack {
         if (name == null || identity == null) return air
-        if (!keys.contains(identity)) return air
+//        if (!keys.contains(identity)) return air
         val key = GermSlots.getKey(name, identity)
         return map.computeIfAbsent(key) { GermSlots.getByKey(key) ?: air }
     }
@@ -108,15 +108,17 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         val list = LinkedList(map.keys.shuffled())
         val size = list.size
         var task: BukkitTask? = null
+        var time = 0L
         task = submit(async = true, period = 1) {
             if (list.isEmpty()) {
                 task?.cancel()
-                debug("总共更新了 $size 个槽")
+                debug("总共更新了$size 个槽, SQL耗时 ${time} 毫秒")
             } else {
                 val key = list.pop()
                 val itemStack = map[key]
-                if (itemStack != null && !itemStack.checkAir())
-                    GermSlots.setItem(key, itemStack)
+                val currentTimeMillis = System.currentTimeMillis()
+                GermSlots.setItem(key, itemStack)
+                time += (System.currentTimeMillis() - currentTimeMillis)
             }
         }
     }

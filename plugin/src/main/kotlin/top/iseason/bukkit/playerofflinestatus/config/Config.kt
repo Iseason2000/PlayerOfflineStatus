@@ -12,12 +12,20 @@ import top.iseason.bukkittemplate.config.annotations.Comment
 import top.iseason.bukkittemplate.config.annotations.FilePath
 import top.iseason.bukkittemplate.config.annotations.Key
 import top.iseason.bukkittemplate.utils.other.submit
+import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.util.Random
+import kotlin.math.abs
 
 @FilePath("setting.yml")
 object Config : SimpleYAMLConfig() {
 
     @Key
-    @Comment("离线缓存设置")
+    @Comment("服务端ID，范围0~31，用于雪花算法")
+    var serverId: Long = abs(Random().nextLong() % 32)
+
+    @Key
+    @Comment("", "离线缓存设置")
     var placeholder: MemorySection? = null
 
     @Key
@@ -63,6 +71,10 @@ object Config : SimpleYAMLConfig() {
     @Key
     @Comment("", "是否开启,重启生效")
     var germ__enable = false
+
+    @Key
+    @Comment("", "萌芽离线槽的dosId, 重启生效")
+    var germ__dos_id = "pos"
 
     @Key
     @Comment("", "当玩家在线时是否显示实时的槽")
@@ -131,6 +143,32 @@ object Config : SimpleYAMLConfig() {
     var germ_slot_backup__enable = false
 
     @Key
+    @Comment(
+        "",
+        "萌芽备份槽的dosId, 重启生效",
+        "格式: {dosId}<->玩家ID@auto_canvas 只适用于 canvas 类型",
+        "以relativeParts下第一个组件为模板设置所有备份槽",
+        "具有变量: %thisPart_backup_id% 为 备份ID; %thisPart_backup_time% 为备份时间",
+        "其他格式: {dosId}<->备份ID@槽id 将设置物品为某个槽的物品",
+        "其他格式: {dosId}<->备份ID@all 只适用于 canvas 类型 自动填充物品，也需要一个模板",
+    )
+    var germ_slot_backup__dos_id = "posb"
+
+    @Key
+    @Comment("", "备份的时间格式")
+    var germ_slot_backup__dos_time_format = "yyyy-MM-dd HH:mm:ss"
+
+    var germSlotBackupTimeFormat = DateTimeFormatter.ofPattern(germ_slot_backup__dos_time_format)
+
+    @Key
+    @Comment("", "使用萌芽备份槽的dos时, 同一个备份的缓存时间，单位秒, -1关闭,重启生效")
+    var germ_slot_backup__dos_cache_time = 3L
+
+    @Key
+    @Comment("", "备份的萌芽槽，留空表示所有。所有槽的顺序是随机的，自己配置是有序的")
+    var germ_slot_backup__slots = mutableListOf<String>()
+
+    @Key
     @Comment("", "最大备份数量，超过将删除, 小于等于0 表示 无限制")
     var germ_slot_backup__max = 3
 
@@ -154,6 +192,7 @@ object Config : SimpleYAMLConfig() {
         if (placeholder__queue_delay < 0) placeholder__queue_delay = 0L
         if (germ__queue_delay < 0) germ__queue_delay = 0L
         if (germ_slot_backup__queue_delay < 0) germ_slot_backup__queue_delay = 0L
+        germSlotBackupTimeFormat = DateTimeFormatter.ofPattern(germ_slot_backup__dos_time_format)
         if (!isInit) return
         updateTask()
     }

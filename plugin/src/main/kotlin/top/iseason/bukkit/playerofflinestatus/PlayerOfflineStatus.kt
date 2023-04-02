@@ -7,10 +7,12 @@ import top.iseason.bukkit.playerofflinestatus.command.setupCommands
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.config.Lang
 import top.iseason.bukkit.playerofflinestatus.dto.*
+import top.iseason.bukkit.playerofflinestatus.germ.GermBackupListener
 import top.iseason.bukkit.playerofflinestatus.germ.GermHook
 import top.iseason.bukkit.playerofflinestatus.germ.GermListener
 import top.iseason.bukkit.playerofflinestatus.germ.GermSlotHandler
 import top.iseason.bukkit.playerofflinestatus.papi.PAPI
+import top.iseason.bukkit.playerofflinestatus.util.Snowflake
 import top.iseason.bukkittemplate.BukkitPlugin
 import top.iseason.bukkittemplate.BukkitTemplate
 import top.iseason.bukkittemplate.command.CommandHandler
@@ -37,7 +39,7 @@ object PlayerOfflineStatus : BukkitPlugin {
         if (GermHook.hasHooked) {
             if (Config.germ__enable) {
                 GermListener.register()
-                GermDosAPI.registerDos("pos")
+                GermDosAPI.registerDos(Config.germ__dos_id)
                 PlayerGermSlots.register()
                 tables.add(PlayerGermSlots)
             }
@@ -49,7 +51,9 @@ object PlayerOfflineStatus : BukkitPlugin {
             }
             if (Config.germ_slot_backup__enable) {
                 GermSlotBackup.register()
+                GermBackupListener.register()
                 tables.add(GermSlotBackup)
+                GermDosAPI.registerDos(Config.germ_slot_backup__dos_id)
             }
         }
         DatabaseConfig.load(false)
