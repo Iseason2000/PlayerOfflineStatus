@@ -45,11 +45,11 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
      * 更新玩家的槽到数据库
      */
     fun upload(player: Player) {
-        val currentTimeMillis = System.currentTimeMillis()
         val name = player.name
+        val currentTimeMillis = System.currentTimeMillis()
         val germs = Config.germ__offline_slots.associateWith { GermSlotAPI.getItemStackFromIdentity(player, it) }
         //更新缓存
-        GermListener.putCache(player.name, germs)
+        GermListener.putCache(name, germs)
         val blob = ExposedBlob(germs.toByteArray())
         dbTransaction {
             val update = PlayerGermSlots.update({ PlayerGermSlots.name eq name }) { it[items] = blob }
@@ -61,7 +61,7 @@ object PlayerGermSlots : Table("player_germ_slot"), org.bukkit.event.Listener {
                 }
             }
         }
-        debug("&a已更新 &6${player.name} &7物品缓存, 耗时 &b${System.currentTimeMillis() - currentTimeMillis} &7毫秒")
+        debug("&a已更新 &6${name} &7物品缓存, 耗时 &b${System.currentTimeMillis() - currentTimeMillis} &7毫秒")
     }
 
     fun uploadAll(sender: CommandSender? = null) {

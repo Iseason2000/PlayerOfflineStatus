@@ -7,12 +7,12 @@ import top.iseason.bukkit.playerofflinestatus.dto.GermSlotBackup
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
 import top.iseason.bukkit.playerofflinestatus.germ.GermHook
+import top.iseason.bukkittemplate.BukkitTemplate
 import top.iseason.bukkittemplate.config.SimpleYAMLConfig
 import top.iseason.bukkittemplate.config.annotations.Comment
 import top.iseason.bukkittemplate.config.annotations.FilePath
 import top.iseason.bukkittemplate.config.annotations.Key
 import top.iseason.bukkittemplate.utils.other.submit
-import java.text.SimpleDateFormat
 import java.time.format.DateTimeFormatter
 import java.util.Random
 import kotlin.math.abs
@@ -133,6 +133,38 @@ object Config : SimpleYAMLConfig() {
         "设为 -1 不定时同步, 设为 0 实时同步（玩家将放入槽中就保存到数据库）"
     )
     var germ__slot_sync_period = 300L
+
+    @Key
+    @Comment("", "接管萌芽的槽，但使用redis代替数据库, 以下重启生效")
+    var germ__slot_holder_redis: MemorySection? = null
+
+    @Key
+    @Comment("", "是否启用")
+    var germ__slot_holder_redis__enable = false
+
+    @Key
+    @Comment("", "redis地址")
+    var germ__slot_holder_redis__host = "127.0.0.1"
+
+    @Key
+    @Comment("", "redis端口")
+    var germ__slot_holder_redis__port = 6379
+
+    @Key
+    @Comment("", "redis 数据库")
+    var germ__slot_holder_redis__database = 0
+
+    @Key
+    @Comment("", "redis 密码，留空就没有")
+    var germ__slot_holder_redis__password = ""
+
+    @Key
+    @Comment("", "redis 是否启用 SSL")
+    var germ__slot_holder_redis__use_ssl = false
+
+    @Key
+    @Comment("", "redis key 的前缀")
+    var germ__slot_holder_redis__prefix = BukkitTemplate.getPlugin().name
 
     @Key
     @Comment("", "", "萌芽槽备份设置")

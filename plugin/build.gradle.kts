@@ -3,6 +3,10 @@ plugins {
 }
 
 repositories {
+    maven {
+        name = "aliyun"
+        url = uri("https://maven.aliyun.com/repository/public")
+    }
     mavenCentral()
 }
 
@@ -18,6 +22,7 @@ dependencies {
     // 本地依赖放在libs文件夹内
     compileOnly(fileTree("libs") { include("*.jar") })
     implementation("org.bstats:bstats-bukkit:3.0.1")
+    compileOnly("redis.clients:jedis:4.3.2")
     compileOnly("org.spigotmc:spigot-api:1.19.3-R0.1-SNAPSHOT")
 }
 

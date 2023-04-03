@@ -1,13 +1,18 @@
 package top.iseason.bukkit.playerofflinestatus.germ
 
 import com.germ.germplugin.api.GermSlotAPI
+import com.germ.germplugin.api.event.GermClientLinkedEvent
+import com.germ.germplugin.api.event.gui.GermGuiOpenEvent
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.player.PlayerLoginEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitTask
+import redis.clients.jedis.JedisPooled
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.dto.GermSlotIds
 import top.iseason.bukkit.playerofflinestatus.dto.GermSlots
@@ -17,6 +22,7 @@ import top.iseason.bukkittemplate.utils.other.runAsync
 import top.iseason.bukkittemplate.utils.other.submit
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
 
 object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
     private val map = ConcurrentHashMap<String, ItemStack>()
@@ -46,7 +52,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
 
     override fun getFromIdentity(name: String?, identity: String?): ItemStack {
         if (name == null || identity == null) return air
-//        if (!keys.contains(identity)) return air
+        if (!keys.contains(identity)) return air
         val key = GermSlots.getKey(name, identity)
         return map.computeIfAbsent(key) { GermSlots.getByKey(key) ?: air }
     }
@@ -77,14 +83,34 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         }
     }
 
-    private fun getPlayerCache(player: String): Map<String, ItemStack> {
-        return getFromIdentitys(player, keys)
+    private fun getPlayerCache(player: String) {
+        return keys.forEach { getFromIdentity(player, it) }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
+    fun onPlayerLogin(event: GermClientLinkedEvent) {
+        val player = event.player.name
+        submit(async = true, delay = 5) {
+            runCatching {
+                keys.forEach {
+                    val key = GermSlots.getKey(player, it)
+                    map[key] = GermSlots.getByKey(key) ?: air
+                }
+                debug("已同步玩家 $player 数据 ${Bukkit.isPrimaryThread()}")
+//                getPlayerCache(player)
+            }.getOrElse { it.printStackTrace() }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     fun onPlayerQuit(event: PlayerQuitEvent) {
         val name = event.player.name
-        submit(async = true, delay = 5) {
+        if (Config.germ__slot_sync_period == 0L) {
+            removePlayerCache(name)
+            return
+        }
+        debug("玩家已退出，更新槽数据... 是否主线程: ${Bukkit.isPrimaryThread()}")
+        submit(async = true) {
             keys.forEach {
                 val key = GermSlots.getKey(name, it)
                 GermSlots.setItem(key, map[key])
@@ -93,14 +119,6 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
-    fun onPlayerLogin(event: PlayerLoginEvent) {
-        val player = event.player
-        submit(async = true, delay = 20) {
-            if (player.isOnline)
-                getPlayerCache(player.name)
-        }
-    }
 
     private fun updateGracefully() {
         GermSlotIds.upload()
@@ -112,7 +130,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         task = submit(async = true, period = 1) {
             if (list.isEmpty()) {
                 task?.cancel()
-                debug("总共更新了$size 个槽, SQL耗时 ${time} 毫秒")
+                debug("总共更新了$size 个槽, SQL耗时 $time 毫秒")
             } else {
                 val key = list.pop()
                 val itemStack = map[key]

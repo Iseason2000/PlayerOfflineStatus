@@ -152,11 +152,9 @@ object GermListener : org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     fun onQuit(event: PlayerQuitEvent) {
         val player = event.player
-        submit(async = true) {
-            PlayerGermSlots.upload(player)
-        }
+        PlayerGermSlots.upload(player)
     }
 }

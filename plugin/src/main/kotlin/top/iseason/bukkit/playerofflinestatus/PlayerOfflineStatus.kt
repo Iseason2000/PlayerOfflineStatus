@@ -7,10 +7,7 @@ import top.iseason.bukkit.playerofflinestatus.command.setupCommands
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.config.Lang
 import top.iseason.bukkit.playerofflinestatus.dto.*
-import top.iseason.bukkit.playerofflinestatus.germ.GermBackupListener
-import top.iseason.bukkit.playerofflinestatus.germ.GermHook
-import top.iseason.bukkit.playerofflinestatus.germ.GermListener
-import top.iseason.bukkit.playerofflinestatus.germ.GermSlotHandler
+import top.iseason.bukkit.playerofflinestatus.germ.*
 import top.iseason.bukkit.playerofflinestatus.papi.PAPI
 import top.iseason.bukkit.playerofflinestatus.util.Snowflake
 import top.iseason.bukkittemplate.BukkitPlugin
@@ -18,6 +15,7 @@ import top.iseason.bukkittemplate.BukkitTemplate
 import top.iseason.bukkittemplate.command.CommandHandler
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.debug.info
+import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.hook.PlaceHolderHook
 import top.iseason.bukkittemplate.utils.bukkit.EventUtils.register
 
@@ -43,7 +41,17 @@ object PlayerOfflineStatus : BukkitPlugin {
                 PlayerGermSlots.register()
                 tables.add(PlayerGermSlots)
             }
-            if (Config.germ__slot_holder) {
+            if (Config.germ__slot_holder_redis__enable) {
+                val old = GermSlotAPI.getSlotDAOHandler()
+                try {
+                    GermSlotAPI.setSlotDAOHandler(GermSlotRedisHandler)
+                    GermSlotRedisHandler.allIdentitys
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    warn("Redis配置错误")
+                    GermSlotAPI.setSlotDAOHandler(old)
+                }
+            } else if (Config.germ__slot_holder) {
                 tables.add(GermSlots)
                 tables.add(GermSlotIds)
                 GermSlotHandler.register()

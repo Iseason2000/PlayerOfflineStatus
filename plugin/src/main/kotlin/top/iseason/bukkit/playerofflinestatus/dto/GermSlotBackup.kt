@@ -121,10 +121,6 @@ object GermSlotBackup : Table("germ_slot_backup"), org.bukkit.event.Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     fun onPlayerQuit(event: PlayerQuitEvent) {
         if (!Config.germ_slot_backup__backup_on_quit) return
-        if (Config.germ__slot_holder) {
-            submit(async = true) {
-                backup(event.player.name)
-            }
-        } else backup(event.player.name)
+        backup(event.player.name)
     }
 }
