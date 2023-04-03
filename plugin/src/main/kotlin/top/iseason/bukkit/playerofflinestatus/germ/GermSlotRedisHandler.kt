@@ -1,27 +1,40 @@
 package top.iseason.bukkit.playerofflinestatus.germ
 
 import com.germ.germplugin.api.GermSlotAPI
+import com.germ.germplugin.api.event.GermClientLinkedEvent
+import com.google.common.cache.CacheBuilder
+import com.google.common.cache.CacheStats
 import org.bukkit.Material
+import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.ItemStack
 import redis.clients.jedis.ConnectionPoolConfig
 import redis.clients.jedis.JedisPooled
-import redis.clients.jedis.util.SafeEncoder
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkittemplate.DisableHook
 import top.iseason.bukkittemplate.debug.SimpleLogger
-import top.iseason.bukkittemplate.debug.debug
 import top.iseason.bukkittemplate.debug.info
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
 import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.toBase64
-import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.toByteArray
-import java.nio.charset.Charset
+import top.iseason.bukkittemplate.utils.other.EasyCoolDown
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 
-object GermSlotRedisHandler : GermSlotAPI.SlotDAOHandler {
+object GermSlotRedisHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
     private val PREFIX = Config.germ__slot_holder_redis__prefix
-    private const val IDENTITYS_KEY = "Identitys"
+    private const val IDENTITIES_KEY = "Identities"
+    private val cache = CacheBuilder.newBuilder()
+        .expireAfterWrite(max(Config.germ__slot_holder_redis__cache_time, 0), TimeUnit.SECONDS)
+        .softValues()
+        .recordStats()
+        .build<String, ItemStack>()
+    private var identity: Collection<String> = emptyList()
+    fun getCacheStats(): CacheStats = cache.stats()
+
     private val jedis = JedisPooled(
         ConnectionPoolConfig(),
         Config.germ__slot_holder_redis__host,
@@ -42,8 +55,12 @@ object GermSlotRedisHandler : GermSlotAPI.SlotDAOHandler {
         return ids.associateWith { getFromIdentity(name, it) }
     }
 
-    override fun getAllIdentitys(): MutableCollection<String> {
-        return jedis.smembers(getRedisKey(IDENTITYS_KEY))
+    override fun getAllIdentitys(): Collection<String> {
+        if (EasyCoolDown.check("germ_slot_redis_identities_cache", 600000)) {
+            return identity
+        }
+        identity = jedis.smembers(getRedisKey(IDENTITIES_KEY))
+        return identity
     }
 
     override fun saveToIdentity(name: String?, identity: String?, item: ItemStack?) {
@@ -52,27 +69,43 @@ object GermSlotRedisHandler : GermSlotAPI.SlotDAOHandler {
         if (item.checkAir()) jedis.del(itemKey)
         else {
             jedis.set(itemKey, item!!.toBase64())
-            jedis.sadd(getRedisKey(IDENTITYS_KEY), identity)
+            jedis.sadd(getRedisKey(IDENTITIES_KEY), identity)
         }
     }
 
     override fun getFromIdentity(name: String?, identity: String?): ItemStack {
         if (name == null || identity == null) return air
-        val currentTimeMillis = System.currentTimeMillis()
         val itemKey = getItemKey(name, identity)
-        val base64 = jedis.get(itemKey) ?: return air
-        val item = try {
-            ItemUtils.fromBase64ToItemStack(base64)
-        } catch (e: Exception) {
-            warn("物品反序列化失败, RedisKey: $itemKey")
-            air
+        val get = cache.get(itemKey) {
+            val base64 = jedis.get(itemKey) ?: return@get air
+            val item = try {
+                ItemUtils.fromBase64ToItemStack(base64)
+            } catch (e: Exception) {
+                warn("物品反序列化失败, RedisKey: $itemKey")
+                air
+            }
+            item
         }
-        if (SimpleLogger.isDebug) {
-            info("已从redis获取物品: $name@$identity 耗时: ${System.currentTimeMillis() - currentTimeMillis} 毫秒")
-        }
-        return item
+
+        return get
     }
 
     private fun getRedisKey(key: String) = "$PREFIX:$key"
     private fun getItemKey(name: String, identity: String) = "$PREFIX:germ_slot:$name:$identity"
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    fun onPlayerLogin(event: GermClientLinkedEvent) {
+        val player = event.player.name
+        allIdentitys.forEach {
+            cache.invalidate(getItemKey(player, it))
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    fun onPlayerQuit(event: PlayerQuitEvent) {
+        val player = event.player.name
+        allIdentitys.forEach {
+            cache.invalidate(getItemKey(player, it))
+        }
+    }
 }

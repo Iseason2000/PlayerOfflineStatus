@@ -17,6 +17,7 @@ import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
 import top.iseason.bukkit.playerofflinestatus.germ.GermBackupListener
 import top.iseason.bukkit.playerofflinestatus.germ.GermHook
 import top.iseason.bukkit.playerofflinestatus.germ.GermListener
+import top.iseason.bukkit.playerofflinestatus.germ.GermSlotRedisHandler
 import top.iseason.bukkit.playerofflinestatus.papi.PAPI
 import top.iseason.bukkittemplate.command.*
 import top.iseason.bukkittemplate.config.DatabaseConfig
@@ -265,6 +266,9 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                     sender.sendColorMessage("&6萌芽: &7${GermListener.getCacheStats().toStr()}")
                 if (Config.germ_slot_backup__enable)
                     sender.sendColorMessage("&b萌芽备份: &7${GermBackupListener.getCacheStats().toStr()}")
+                if (Config.germ__slot_holder_redis__enable)
+                    sender.sendColorMessage("&c萌芽Redis代理: &7${GermSlotRedisHandler.getCacheStats().toStr()}")
+
             }
         }
     }

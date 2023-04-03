@@ -167,6 +167,10 @@ object Config : SimpleYAMLConfig() {
     var germ__slot_holder_redis__prefix = BukkitTemplate.getPlugin().name
 
     @Key
+    @Comment("", "redis 本地读取缓存时间, 单位秒")
+    var germ__slot_holder_redis__cache_time = 15L
+
+    @Key
     @Comment("", "", "萌芽槽备份设置")
     var germ_slot_backup: MemorySection? = null
 
