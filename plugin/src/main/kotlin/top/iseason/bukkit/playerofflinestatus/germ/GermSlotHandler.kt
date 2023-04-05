@@ -31,12 +31,6 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
 
     fun init() {
         GermSlotIds.download()
-        val germSlotSyncPeriod = Config.germ__slot_sync_period
-        if (germSlotSyncPeriod > 0) {
-            submit(async = true, period = germSlotSyncPeriod, delay = germSlotSyncPeriod) {
-                updateGracefully()
-            }
-        }
     }
 
     override fun getFromIdentitys(name: String?, ids: MutableCollection<String>?): Map<String, ItemStack> {
@@ -54,7 +48,7 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
         if (name == null || identity == null) return air
         if (!keys.contains(identity)) return air
         val key = GermSlots.getKey(name, identity)
-        return map.computeIfAbsent(key) { GermSlots.getByKey(key) ?: air }
+        return map.computeIfAbsent(key) { air }
     }
 
     override fun getAllIdentitys(): MutableCollection<String> {
@@ -64,16 +58,16 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
     override fun saveToIdentity(name: String?, identity: String?, item: ItemStack?) {
         if (name == null || identity == null) return
         val key = GermSlots.getKey(name, identity)
+        val old = map[key]
+        if (old == item) return
         if (item.checkAir()) {
             map[key] = air
         } else {
             map[key] = item!!
             keys.add(identity)
         }
-        if (Config.germ__slot_sync_period == 0L) {
-            runAsync {
-                GermSlots.setItem(key, item)
-            }
+        runAsync {
+            GermSlots.setItem(key, item)
         }
     }
 
@@ -88,35 +82,22 @@ object GermSlotHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    fun onPlayerLogin(event: GermClientLinkedEvent) {
+    fun onGermClientLinkedEvent(event: GermClientLinkedEvent) {
         val player = event.player.name
-        submit(async = true, delay = 5) {
-            runCatching {
-                keys.forEach {
-                    val key = GermSlots.getKey(player, it)
-                    map[key] = GermSlots.getByKey(key) ?: air
-                }
-                debug("已同步玩家 $player 数据 ${Bukkit.isPrimaryThread()}")
+        removePlayerCache(player)
+        runCatching {
+            keys.forEach {
+                val key = GermSlots.getKey(player, it)
+                map[key] = GermSlots.getByKey(key) ?: air
+            }
+            debug("已同步玩家 $player 数据 ${Bukkit.isPrimaryThread()}")
 //                getPlayerCache(player)
-            }.getOrElse { it.printStackTrace() }
-        }
+        }.getOrElse { it.printStackTrace() }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onPlayerQuit(event: PlayerQuitEvent) {
-        val name = event.player.name
-        if (Config.germ__slot_sync_period == 0L) {
-            removePlayerCache(name)
-            return
-        }
-        debug("玩家已退出，更新槽数据... 是否主线程: ${Bukkit.isPrimaryThread()}")
-        submit(async = true) {
-            keys.forEach {
-                val key = GermSlots.getKey(name, it)
-                GermSlots.setItem(key, map[key])
-            }
-            removePlayerCache(name)
-        }
+        removePlayerCache(event.player.name)
     }
 
 

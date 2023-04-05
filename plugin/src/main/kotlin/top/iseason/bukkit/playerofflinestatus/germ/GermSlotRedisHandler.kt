@@ -66,11 +66,13 @@ object GermSlotRedisHandler : GermSlotAPI.SlotDAOHandler, org.bukkit.event.Liste
     override fun saveToIdentity(name: String?, identity: String?, item: ItemStack?) {
         if (name == null || identity == null) return
         val itemKey = getItemKey(name, identity)
+        if (cache.getIfPresent(itemKey) == item) return
         if (item.checkAir()) jedis.del(itemKey)
         else {
             jedis.set(itemKey, item!!.toBase64())
             jedis.sadd(getRedisKey(IDENTITIES_KEY), identity)
         }
+        cache.put(itemKey, item ?: air)
     }
 
     override fun getFromIdentity(name: String?, identity: String?): ItemStack {

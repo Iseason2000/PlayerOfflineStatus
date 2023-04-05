@@ -128,13 +128,6 @@ object Config : SimpleYAMLConfig() {
     var germ__slot_holder = false
 
     @Key
-    @Comment(
-        "", "服务器将定时把缓存中的槽同步到数据库，此为周期，单位tick",
-        "设为 -1 不定时同步, 设为 0 实时同步（玩家将放入槽中就保存到数据库）"
-    )
-    var germ__slot_sync_period = 300L
-
-    @Key
     @Comment("", "接管萌芽的槽，但使用redis代替数据库, 以下重启生效")
     var germ__slot_holder_redis: MemorySection? = null
 
