@@ -88,16 +88,9 @@ object GermSlotBackup : Table("germ_slot_backup"), org.bukkit.event.Listener {
                 .first()[GermSlotBackup.id.count()]
         }
         if (count > Config.germ_slot_backup__max) {
-            val num = count - Config.germ_slot_backup__max
+            val num = (count - Config.germ_slot_backup__max).toInt()
             dbTransaction {
-                val ids = GermSlotBackup
-                    .slice(GermSlotBackup.id)
-                    .select(GermSlotBackup.name eq player)
-                    .orderBy(GermSlotBackup.id, SortOrder.ASC)
-                    .limit(num.toInt()).map { it[GermSlotBackup.id] }
-                for (id in ids) {
-                    GermSlotBackup.deleteWhere { GermSlotBackup.id eq id }
-                }
+                GermSlotBackup.deleteWhere(limit = num) { GermSlotBackup.name eq player }
             }
             debug("已删除 $player 多余的 $num 老备份数据")
         }
