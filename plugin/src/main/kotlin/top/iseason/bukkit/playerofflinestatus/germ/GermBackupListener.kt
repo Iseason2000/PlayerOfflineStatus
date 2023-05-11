@@ -11,7 +11,6 @@ import org.bukkit.Material
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.inventory.ItemStack
-import sun.audio.AudioPlayer.player
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.dto.GermSlotBackup
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
@@ -104,7 +103,7 @@ object GermBackupListener : org.bukkit.event.Listener {
     private fun getBackCache(id: String, itemId: String) = getBackupCaches(id)[itemId] ?: air
 
     private fun getBackupList(id: String): List<Pair<Long, LocalDateTime>> =
-        backListCaches.get(id) { GermSlotBackup.queryBackup(id) }.sortedByDescending { it.first }
+        backListCaches.get(id) { GermSlotBackup.queryBackup(id) }.sortedByDescending { it.second }
 
     fun getBackupCaches(id: String): Map<String, ItemStack> {
         // 未命中的缓存

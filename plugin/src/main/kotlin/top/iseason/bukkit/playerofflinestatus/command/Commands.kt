@@ -23,9 +23,7 @@ import top.iseason.bukkittemplate.command.*
 import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.config.MySqlLogger
 import top.iseason.bukkittemplate.debug.SimpleLogger
-import top.iseason.bukkittemplate.utils.bukkit.ItemUtils.checkAir
 import top.iseason.bukkittemplate.utils.bukkit.MessageUtils.sendColorMessage
-import java.lang.StringBuilder
 import java.time.LocalDateTime
 
 /**
@@ -102,13 +100,13 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<String>()
-                val queryBackup = GermSlotBackup.queryBackup(player)
+                val queryBackup = GermSlotBackup.queryBackup(player).sortedByDescending { it.second }
                 if (queryBackup.isEmpty()) throw ParmaException("该玩家没有数据备份!")
                 val isPlayer = sender is Player
                 queryBackup.forEach { (id, time) ->
-                    val message = TextComponent("ID: ")
+                    val message = TextComponent("ID: $id")
                     val idClick = TextComponent(id.toString())
-                    idClick.clickEvent = ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, id.toString())
+                    idClick.clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, id.toString())
                     idClick.hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text("点击复制"))
                     message.addExtra(idClick)
                     message.addExtra(" 时间: $time")

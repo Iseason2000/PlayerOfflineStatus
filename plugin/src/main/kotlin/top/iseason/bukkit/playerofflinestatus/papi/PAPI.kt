@@ -13,7 +13,6 @@ import top.iseason.bukkittemplate.BukkitTemplate
 import top.iseason.bukkittemplate.config.dbTransaction
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.utils.other.CoolDown
-import java.lang.StringBuilder
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -44,7 +43,7 @@ object PAPI : PlaceholderExpansion() {
 
     // pos_player_xxxxxx
     override fun onRequest(player: OfflinePlayer?, params: String): String? {
-        val split = params.split('_', limit = 2)
+        val split = params.split(Config.placeholder__separator, limit = 2)
         if (split.size != 2) return null
         val playerName = split[0]
         val p = Bukkit.getPlayer(playerName)
@@ -68,7 +67,7 @@ object PAPI : PlaceholderExpansion() {
         val noCaChe = noCache.contains(key)
         if (noCaChe && coolDown.check("nocache-${papi}", 2000)) return null
         val callable = Callable {
-            val value = dbTransaction {
+            val value = dbTransaction(true) {
                 PlayerPAPIs.slice(PlayerPAPIs.value).select {
                     PlayerPAPIs.name eq name and (PlayerPAPIs.papi eq papi)
                 }.limit(1).firstOrNull()?.get(PlayerPAPIs.value)

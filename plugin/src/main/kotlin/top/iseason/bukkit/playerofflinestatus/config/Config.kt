@@ -14,7 +14,7 @@ import top.iseason.bukkittemplate.config.annotations.FilePath
 import top.iseason.bukkittemplate.config.annotations.Key
 import top.iseason.bukkittemplate.utils.other.submit
 import java.time.format.DateTimeFormatter
-import java.util.Random
+import java.util.*
 import kotlin.math.abs
 
 @FilePath("setting.yml")
@@ -28,6 +28,11 @@ object Config : SimpleYAMLConfig() {
     @Comment("", "离线缓存设置")
     var placeholder: MemorySection? = null
 
+    @Key
+    @Comment("", "玩家名称与变量的分隔符，如果你的玩家名字存在 '_' 导致i无法显示请自行修改")
+    var placeholder__separator = "_"
+
+    // 分隔符
     @Key
     @Comment("", "当玩家上线时是否显示实时的变量")
     var placeholder__proxy_online: Boolean = true

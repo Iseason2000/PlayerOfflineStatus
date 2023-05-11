@@ -3,10 +3,6 @@ plugins {
 }
 
 repositories {
-    maven {
-        name = "aliyun"
-        url = uri("https://maven.aliyun.com/repository/public")
-    }
     mavenCentral()
 }
 
@@ -49,8 +45,7 @@ else
 val obfuscatedMainClass =
     if (obfuscationDictionaryFile?.exists() == true) {
         obfuscationDictionaryFile.readLines().firstOrNull() ?: "a"
-    }
-    else "a"
+    } else "a"
 val isObfuscated = obfuscated == "true"
 val shrink: String by rootProject
 val defaultFile = File("../build", "${rootProject.name}-${rootProject.version}.jar")
@@ -67,7 +62,7 @@ tasks {
         }
         relocate("top.iseason.bukkittemplate", "$groupS.libs.core")
         relocate("org.bstats", "$groupS.libs.bstats")
-        relocate("io.github.bananapuncher714.nbteditor", "$groupS.libs.nbteditor")
+//        relocate("io.github.bananapuncher714.nbteditor", "$groupS.libs.nbteditor")
     }
     build {
         dependsOn("buildPlugin")
@@ -87,7 +82,8 @@ tasks {
                 "version" to project.version,
                 "author" to author,
                 "kotlinVersion" to getProperties("kotlinVersion"),
-                "exposedVersion" to exposedVersion
+                "exposedVersion" to getProperties("exposedVersion"),
+                "nbtEditorVersion" to getProperties("nbtEditorVersion")
             )
         }
     }
@@ -130,7 +126,6 @@ tasks.register<proguard.gradle.ProGuardTask>("buildPlugin") {
     if (isObfuscated) keep(allowObf, "class $obfuscatedMainClass {}")
     else keep("class $groupS.libs.core.BukkitTemplate {}")
     keep("class kotlin.Metadata {}")
-    keep(allowObf, "class $groupS.libs.core.PluginBootStrap {*;}")
     keep(allowObf, "class * implements $groupS.libs.core.BukkitPlugin {*;}")
     keepclassmembers("class * extends $groupS.libs.core.config.SimpleYAMLConfig {*;}")
     keepclassmembers("class * implements $groupS.libs.core.ui.container.BaseUI {*;}")

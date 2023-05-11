@@ -9,7 +9,6 @@ import top.iseason.bukkit.playerofflinestatus.config.Lang
 import top.iseason.bukkit.playerofflinestatus.dto.*
 import top.iseason.bukkit.playerofflinestatus.germ.*
 import top.iseason.bukkit.playerofflinestatus.papi.PAPI
-import top.iseason.bukkit.playerofflinestatus.util.Snowflake
 import top.iseason.bukkittemplate.BukkitPlugin
 import top.iseason.bukkittemplate.BukkitTemplate
 import top.iseason.bukkittemplate.command.CommandHandler
@@ -17,7 +16,7 @@ import top.iseason.bukkittemplate.config.DatabaseConfig
 import top.iseason.bukkittemplate.debug.info
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.hook.PlaceHolderHook
-import top.iseason.bukkittemplate.utils.bukkit.EventUtils.register
+import top.iseason.bukkittemplate.utils.bukkit.EventUtils.registerListener
 
 object PlayerOfflineStatus : BukkitPlugin {
 
@@ -33,12 +32,12 @@ object PlayerOfflineStatus : BukkitPlugin {
         Lang.load(false)
         //加载数据表
         val tables = mutableListOf<Table>(PlayerPAPIs)
-        PlayerPAPIs.register()
+        PlayerPAPIs.registerListener()
         if (GermHook.hasHooked) {
             if (Config.germ__enable) {
-                GermListener.register()
+                GermListener.registerListener()
                 GermDosAPI.registerDos(Config.germ__dos_id)
-                PlayerGermSlots.register()
+                PlayerGermSlots.registerListener()
                 tables.add(PlayerGermSlots)
             }
             if (Config.germ__slot_holder_redis__enable) {
@@ -54,12 +53,12 @@ object PlayerOfflineStatus : BukkitPlugin {
             } else if (Config.germ__slot_holder) {
                 tables.add(GermSlots)
                 tables.add(GermSlotIds)
-                GermSlotHandler.register()
+                GermSlotHandler.registerListener()
                 GermSlotAPI.setSlotDAOHandler(GermSlotHandler)
             }
             if (Config.germ_slot_backup__enable) {
-                GermSlotBackup.register()
-                GermBackupListener.register()
+                GermSlotBackup.registerListener()
+                GermBackupListener.registerListener()
                 tables.add(GermSlotBackup)
                 GermDosAPI.registerDos(Config.germ_slot_backup__dos_id)
             }
