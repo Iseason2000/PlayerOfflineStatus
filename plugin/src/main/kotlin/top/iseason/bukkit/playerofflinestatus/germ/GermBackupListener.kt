@@ -112,7 +112,10 @@ object GermBackupListener : org.bukkit.event.Listener {
         val callable = Callable {
             val value = GermSlotBackup.getBackupItemsDate(id.toLong())
             if (value != null) {
-                return@Callable PlayerGermSlots.fromByteArray(value.bytes)
+                return@Callable runCatching { PlayerGermSlots.fromByteArray(value.bytes) }.getOrElse {
+                    warn("Dos ${Config.germ_slot_backup__dos_id}<->$id 数据异常，请检查数据完整性!")
+                    empty
+                }
             } else if (!noCaChe) {
                 noCache.add(id)
                 warn("Dos ${Config.germ_slot_backup__dos_id}<->$id 没有数据缓存，请检查名称或配置缓存!")
