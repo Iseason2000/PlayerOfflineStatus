@@ -46,7 +46,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 val player = params.next<Player>()
                 sender.sendColorMessage("&6正在保存玩家变量...")
                 PlayerPAPIs.upload(player)
-                sender.sendColorMessage("&a保存成功!")
+                sender.sendColorMessage("&a 保存成功!")
             }
         }
         node("all") {
@@ -73,7 +73,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 val player = params.next<Player>()
                 sender.sendColorMessage("&6正在保存玩家槽...")
                 PlayerGermSlots.upload(player)
-                sender.sendColorMessage("&a保存成功!")
+                sender.sendColorMessage("&a 保存成功!")
             }
         }
         node("all") {
@@ -96,38 +96,93 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             default = PermissionDefault.OP
             async = true
             param("<player>", suggestRuntime = ParamSuggestCache.playerParam)
+            param("[page]")
             executor { params, sender ->
                 if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<String>()
-                val queryBackup = GermSlotBackup.queryBackup(player).sortedByDescending { it.second }
-                if (queryBackup.isEmpty()) throw ParmaException("该玩家没有数据备份!")
-                val isPlayer = sender is Player
-                queryBackup.forEach { (id, time) ->
-                    val message = TextComponent("ID: $id")
-                    val idClick = TextComponent(id.toString())
-                    idClick.clickEvent = ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, id.toString())
-                    idClick.hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, Text("点击复制"))
-                    message.addExtra(idClick)
-                    message.addExtra(" 时间: $time")
-                    if (isPlayer) {
-                        val clickOpen = TextComponent("[点击打开]")
-                        clickOpen.clickEvent =
-                            ClickEvent(ClickEvent.Action.RUN_COMMAND, "/playerofflinestatus backup open $id")
-                        message.addExtra("  ")
-                        message.addExtra(clickOpen)
-                        message.addExtra("  ")
-                        val clickRollback = TextComponent("[点击回滚]")
-                        clickRollback.clickEvent =
-                            ClickEvent(
-                                ClickEvent.Action.RUN_COMMAND,
-                                "/playerofflinestatus backup rollback $player $id"
-                            )
-                        message.addExtra(clickRollback)
-                    }
+                val page = params.nextOrDefault(0)
+                
+                // 查询所有备份并分页
+                val allBackups = GermSlotBackup.queryBackup(player).sortedByDescending { it.second }
+                if (allBackups.isEmpty()) throw ParmaException("该玩家没有数据备份!")
+                
+                val perPage = Config.backup__show_per_page
+                val totalPages = (allBackups.size + perPage - 1) / perPage
+                val pagedBackups = allBackups.chunked(perPage).getOrNull(page) 
+                    ?: throw ParmaException("该页没有数据!")
+                
+                // 发送分页提示
+                sender.sendColorMessage("&6玩家 &e$player &6的备份 (第 ${page + 1}/$totalPages 页):")
+                
+                // 构建每条备份消息（Hover 显示时间，点击打开 GUI）
+                pagedBackups.forEach { (id, time) ->
+                    val message = TextComponent("  • 备份 ID: $id")
+                    
+                    // Hover 显示时间
+                    message.hoverEvent = HoverEvent(
+                        HoverEvent.Action.SHOW_TEXT,
+                        Text(time.toString())
+                    )
+                    
+                    // 点击打开箱子 GUI
+                    message.clickEvent = ClickEvent(
+                        ClickEvent.Action.RUN_COMMAND,
+                        "/playerofflinestatus backup view $id"
+                    )
+                    
                     sender.spigot().sendMessage(message)
                 }
-                sender.sendColorMessage("&6该玩家的萌芽槽备份如上")
+                
+                // 翻页按钮
+                if (page > 0) {
+                    val prevBtn = TextComponent("&a[« 上一页]")
+                    prevBtn.clickEvent = ClickEvent(
+                        ClickEvent.Action.RUN_COMMAND,
+                        "/playerofflinestatus backup show $player ${page - 1}"
+                    )
+                    sender.spigot().sendMessage(prevBtn)
+                }
+                
+                if (page < totalPages - 1) {
+                    val nextBtn = TextComponent("&a[下一页 »]")
+                    nextBtn.clickEvent = ClickEvent(
+                        ClickEvent.Action.RUN_COMMAND,
+                        "/playerofflinestatus backup show $player ${page + 1}"
+                    )
+                    sender.spigot().sendMessage(nextBtn)
+                }
+            }
+        }
+        node("view") {
+            description = "查看某个备份的物品（箱子 GUI）"
+            default = PermissionDefault.OP
+            async = true
+            param("<id>")
+            isPlayerOnly = true
+            executor { params, sender ->
+                if (!GermHook.hasHooked || !Config.germ_slot_backup__enable) throw ParmaException("萌芽不存在或功能未开启!")
+                if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
+                
+                val id = params.next<Long>()
+                val items = GermBackupListener.getBackupCaches(id.toString())
+                
+                if (items.isEmpty()) throw ParmaException("该备份没有物品数据!")
+                
+                val player = sender as Player
+                
+                // 创建箱子 GUI（根据物品数量动态调整大小，最大 54 格）
+                val size = ((items.size - 1) / 9 + 1) * 9
+                val inventorySize = maxOf(9, minOf(54, size))
+                
+                val inventory = Bukkit.createInventory(player, inventorySize, "备份 #$id")
+                
+                // 填充物品
+                items.values.forEach { item ->
+                    inventory.addItem(item)
+                }
+                
+                player.openInventory(inventory)
             }
         }
         node("open") {
@@ -143,11 +198,11 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 val id = params.next<Long>()
                 val page = params.nextOrDefault<Int>(0)
                 val items = GermBackupListener.getBackupCaches(id.toString())
-                if (items.isEmpty()) throw ParmaException("该ID没有数据!")
+                if (items.isEmpty()) throw ParmaException("该 ID 没有数据!")
                 val player = sender as Player
                 val chunked = items.entries.chunked(54)
                 val pageItems = chunked.getOrNull(page) ?: throw ParmaException("该页没有数据")
-                val inventory = Bukkit.createInventory(player, 54, "备份ID: $id   修改是没有意义的")
+                val inventory = Bukkit.createInventory(player, 54, "备份 ID: $id   修改是没有意义的")
                 pageItems.forEach { (_, item) ->
                     inventory.addItem(item)
                 }
@@ -167,11 +222,11 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 val player = params.next<Player>()
                 val id = params.next<Long>()
                 val items = GermBackupListener.getBackupCaches(id.toString())
-                if (items.isEmpty()) throw ParmaException("该ID没有数据!")
+                if (items.isEmpty()) throw ParmaException("该 ID 没有数据!")
                 items.forEach { (key, item) ->
                     GermSlotAPI.saveItemStackToDatabase(player, key, item)
                 }
-                sender.sendColorMessage("&a玩家 &6${player.name} &a的槽已回滚至 &b${id}")
+                sender.sendColorMessage("&a 玩家 &6${player.name} &a 的槽已回滚至 &b${id}")
             }
         }
 
@@ -186,7 +241,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 val player = params.next<Player>()
                 GermSlotBackup.backup(player.name)
                 GermSlotBackup.checkNums(player.name)
-                sender.sendColorMessage("&a玩家 &6${player.name} &a的槽已备份 ${LocalDateTime.now()}")
+                sender.sendColorMessage("&a 玩家 &6${player.name} &a 的槽已备份 ${LocalDateTime.now()}")
             }
         }
 
@@ -211,7 +266,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             DatabaseConfig.isAutoUpdate = false
             DatabaseConfig.load()
             DatabaseConfig.isAutoUpdate = true
-            sender.sendColorMessage("&a插件已重载!")
+            sender.sendColorMessage("&a 插件已重载!")
         }
     }
     node("reConnect") {
@@ -220,11 +275,11 @@ fun setupCommands() = command("PlayerOfflineStatus") {
         async = true
         executor { _, sender ->
             DatabaseConfig.reConnected()
-            sender.sendColorMessage("&a数据库已重新连接!")
+            sender.sendColorMessage("&a 数据库已重新连接!")
         }
     }
     node("debug") {
-        description = "切换debug模式"
+        description = "切换 debug 模式"
         default = PermissionDefault.OP
         async = true
         node("msg") {
@@ -232,7 +287,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             default = PermissionDefault.OP
             executor { _, sender ->
                 SimpleLogger.isDebug = !SimpleLogger.isDebug
-                sender.sendColorMessage("&aDebug 消息: &6${SimpleLogger.isDebug}")
+                sender.sendColorMessage("&aDebug 消息：&6${SimpleLogger.isDebug}")
             }
         }
         node("sql") {
@@ -249,23 +304,23 @@ fun setupCommands() = command("PlayerOfflineStatus") {
             default = PermissionDefault.OP
             fun CacheStats.toStr(): String {
                 val stringBuilder = StringBuilder()
-                stringBuilder.append("请求数: ")
+                stringBuilder.append("请求数：")
                 stringBuilder.append(requestCount())
-                stringBuilder.append(" | 命中率: ")
+                stringBuilder.append(" | 命中率：")
                 stringBuilder.append("%.2f".format(hitRate()))
-                stringBuilder.append(" | 平均SQL耗时: ")
+                stringBuilder.append(" | 平均 SQL 耗时：")
                 stringBuilder.append("%.2f".format(averageLoadPenalty() / 1000000))
                 stringBuilder.append(" 毫秒")
                 return stringBuilder.toString()
             }
             executor { _, sender ->
-                sender.sendColorMessage("&a变量: &7${PAPI.getCacheStats().toStr()}")
+                sender.sendColorMessage("&a 变量：&7${PAPI.getCacheStats().toStr()}")
                 if (Config.germ__enable)
-                    sender.sendColorMessage("&6萌芽: &7${GermListener.getCacheStats().toStr()}")
+                    sender.sendColorMessage("&6 萌芽：&7${GermListener.getCacheStats().toStr()}")
                 if (Config.germ_slot_backup__enable)
-                    sender.sendColorMessage("&b萌芽备份: &7${GermBackupListener.getCacheStats().toStr()}")
+                    sender.sendColorMessage("&b 萌芽备份：&7${GermBackupListener.getCacheStats().toStr()}")
                 if (Config.germ__slot_holder_redis__enable)
-                    sender.sendColorMessage("&c萌芽Redis代理: &7${GermSlotRedisHandler.getCacheStats().toStr()}")
+                    sender.sendColorMessage("&c 萌芽 Redis 代理：&7${GermSlotRedisHandler.getCacheStats().toStr()}")
 
             }
         }

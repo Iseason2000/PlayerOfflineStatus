@@ -222,6 +222,14 @@ object Config : SimpleYAMLConfig() {
     @Comment("", "每次更新缓存时，将遍历此时在线的玩家，此项为遍历的时间间隔, 单位tick")
     var germ_slot_backup__queue_delay = 10L
 
+    @Key
+    @Comment("", "", "备份展示设置")
+    var backup: MemorySection? = null
+
+    @Key
+    @Comment("", "每页显示的备份数量，建议 5-20")
+    var backup__show_per_page = 10
+
     private var papiTask: BukkitTask? = null
     private var germTask: BukkitTask? = null
     private var germBackupTask: BukkitTask? = null
