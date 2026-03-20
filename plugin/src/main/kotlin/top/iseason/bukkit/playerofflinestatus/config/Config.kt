@@ -42,6 +42,10 @@ object Config : SimpleYAMLConfig() {
     var placeholder__offline_placeholders = setOf<String>()
 
     @Key
+    @Comment("", "需要离线缓存的变量不存在时返回默认值")
+    var placeholder__offline_placeholder_default = ""
+
+    @Key
     @Comment(
         "",
         "更新缓存的时间间隔, 单位tick ,-1 关闭",

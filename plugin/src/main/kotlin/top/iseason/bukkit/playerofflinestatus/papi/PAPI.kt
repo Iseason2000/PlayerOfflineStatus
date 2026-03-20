@@ -52,7 +52,7 @@ object PAPI : PlaceholderExpansion() {
         if (p != null && Config.placeholder__proxy_online) {
             return PlayerPAPIs.getPAPIResult(p, papi)
         }
-        return getCachePAPI(params, playerName, papi)
+        return getCachePAPI(params, playerName, papi) ?: Config.placeholder__offline_placeholder_default
     }
 
     fun putCache(key: String, papi: String) {

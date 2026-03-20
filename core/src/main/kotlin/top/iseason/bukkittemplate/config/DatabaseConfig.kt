@@ -304,7 +304,6 @@ object MySqlLogger : SqlLogger {
 fun <T> dbTransaction(readOnly: Boolean = false, statement: Transaction.() -> T) =
     transaction(
         DatabaseConfig.connection.transactionManager.defaultIsolationLevel,
-        DatabaseConfig.connection.transactionManager.defaultRepetitionAttempts,
         readOnly,
         DatabaseConfig.connection, statement
     )

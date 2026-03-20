@@ -47,7 +47,7 @@ object PlayerOfflineStatus : BukkitPlugin {
                     GermSlotRedisHandler.allIdentitys
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    warn("Redis配置错误")
+                    warn("Redis配置错误!!!")
                     GermSlotAPI.setSlotDAOHandler(old)
                 }
             } else if (Config.germ__slot_holder) {

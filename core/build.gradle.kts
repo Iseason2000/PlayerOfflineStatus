@@ -21,6 +21,12 @@ tasks {
         options.isFailOnError = false
         options.isWarnings = false
         options.isVerbose = false
+        options.encoding = "UTF-8"
+        sourceCompatibility = "1.8"
+        targetCompatibility = "1.8"
+    }
+    compileKotlin {
+        kotlinOptions.jvmTarget = "1.8"
     }
     build {
         dependsOn(named("shadowJar"))

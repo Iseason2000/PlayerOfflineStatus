@@ -166,7 +166,7 @@ fun setupCommands() = command("PlayerOfflineStatus") {
                 if (!DatabaseConfig.isConnected) throw ParmaException("数据库异常，请检查数据库!")
                 val player = params.next<Player>()
                 val id = params.next<Long>()
-                val items = GermBackupListener.getBackupCaches(id.toString()) ?: throw ParmaException("该ID没有数据!")
+                val items = GermBackupListener.getBackupCaches(id.toString())
                 if (items.isEmpty()) throw ParmaException("该ID没有数据!")
                 items.forEach { (key, item) ->
                     GermSlotAPI.saveItemStackToDatabase(player, key, item)
