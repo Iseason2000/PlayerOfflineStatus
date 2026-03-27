@@ -3,23 +3,27 @@ plugins {
 }
 
 repositories {
+    mavenLocal()
+    maven { url = uri("https://maven.aliyun.com/repository/public") }
+    maven { url = uri("https://repo.maven.apache.org/maven2") }
+    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/public/") }
+    maven { url = uri("https://repo.codemc.org/repository/maven-public") }
     mavenCentral()
 }
 
 dependencies {
     // 依赖core模块
     api(project(":core"))
-//    反射库
-//    compileOnly(kotlin("reflect"))
-
-//    协程库
-//    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.2")
+    compileOnly(kotlin("stdlib"))
 
     // 本地依赖放在libs文件夹内
     compileOnly(fileTree("libs") { include("*.jar") })
     implementation("org.bstats:bstats-bukkit:3.0.1")
     compileOnly("redis.clients:jedis:4.3.2")
     compileOnly("org.spigotmc:spigot-api:1.19.3-R0.1-SNAPSHOT")
+    compileOnly("org.jetbrains.exposed:exposed-core:0.45.0")
+    compileOnly("org.jetbrains.exposed:exposed-dao:0.45.0")
+    compileOnly("org.jetbrains.exposed:exposed-jdbc:0.45.0")
 }
 
 // 插件名称，请在gradle.properties 修改

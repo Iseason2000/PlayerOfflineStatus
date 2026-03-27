@@ -1,7 +1,6 @@
 package top.iseason.bukkit.playerofflinestatus.dto
 
 import me.clip.placeholderapi.PlaceholderAPI
-import me.clip.placeholderapi.PlaceholderAPIPlugin
 import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
@@ -87,18 +86,10 @@ object PlayerPAPIs : Table("player_papi"), org.bukkit.event.Listener {
      * 直接解析papi
      */
     fun getPAPIResult(player: Player, str: String): String? {
-        val split = str.split('_', limit = 2)
-        if (split.size != 2) return null
-        if (!Config.placeholder__old_placeHolder_version) {
-            val expansion =
-                PlaceholderAPIPlugin.getInstance().localExpansionManager.getExpansion(split[0]) ?: return null
-            return expansion.onRequest(player, split[1])
-        } else {
-            val papi = "%${str}%"
-            val result = PlaceholderAPI.setPlaceholders(player, papi)
-            return if (papi == result) null
-            else result
-        }
+        val papi = "%${str}%"
+        val result = PlaceholderAPI.setPlaceholders(player, papi)
+        return if (papi == result) null
+        else result
     }
 
     @EventHandler

@@ -2,8 +2,10 @@ package top.iseason.bukkit.playerofflinestatus.api
 
 import org.bukkit.Bukkit
 import org.bukkit.inventory.ItemStack
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import top.iseason.bukkit.playerofflinestatus.config.Config
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerGermSlots
 import top.iseason.bukkit.playerofflinestatus.dto.PlayerPAPIs
@@ -37,8 +39,18 @@ import com.google.common.cache.CacheStats
  * // 获取离线玩家的 PAPI 变量值
  * val balance = PlayerOfflineStatusAPI.getOfflinePAPI("Steve", "vault_eco_balance")
  * ```
+ *
+ * ## Bukkit Services API 使用示例
+ * ```java
+ * RegisteredServiceProvider<POSAPI> provider = getServer().getServicesManager()
+ *     .getRegistration(POSAPI.class);
+ * if (provider != null) {
+ *     POSAPI api = provider.getProvider();
+ *     String level = api.getOfflinePAPI("Steve", "player_level");
+ * }
+ * ```
  */
-object PlayerOfflineStatusAPI {
+object PlayerOfflineStatusAPI : POSAPI {
 
     // ==================== 萌芽槽位物品 ====================
 
@@ -56,7 +68,7 @@ object PlayerOfflineStatusAPI {
      * @param identity   萌芽槽位 identity（如 "germplugin_armor_helmet"）
      * @return 槽位中的物品，若无数据则返回 null
      */
-    fun getOfflineGermSlot(playerName: String, identity: String): ItemStack? {
+    override fun getOfflineGermSlot(playerName: String, identity: String): ItemStack? {
         if (!GermHook.hasHooked) return null
 
         // 在线玩家且开启了代理，直接从 GermSlotAPI 读取
@@ -111,7 +123,7 @@ object PlayerOfflineStatusAPI {
      * @param playerName 玩家名称
      * @return 槽位 identity -> ItemStack 的映射，若无数据则返回空 Map
      */
-    fun getOfflineGermSlots(playerName: String): Map<String, ItemStack> {
+    override fun getOfflineGermSlots(playerName: String): Map<String, ItemStack> {
         if (!GermHook.hasHooked) return emptyMap()
 
         // 在线玩家且开启了代理，直接从 GermSlotAPI 读取所有已知槽位
@@ -180,7 +192,7 @@ object PlayerOfflineStatusAPI {
      *                   例如 "vault_eco_balance"
      * @return 变量的值，若无缓存数据则返回 null
      */
-    fun getOfflinePAPI(playerName: String, papi: String): String? {
+    override fun getOfflinePAPI(playerName: String, papi: String): String? {
         // 在线玩家且开启了代理，直接实时解析
         val onlinePlayer = Bukkit.getPlayerExact(playerName)
         if (onlinePlayer != null && Config.placeholder__proxy_online) {
@@ -206,7 +218,7 @@ object PlayerOfflineStatusAPI {
      * @param playerName 玩家名称
      * @return papi 变量标识符 -> 值 的映射，若无数据则返回空 Map
      */
-    fun getOfflineAllPAPIs(playerName: String): Map<String, String> {
+    override fun getOfflineAllPAPIs(playerName: String): Map<String, String> {
         // 在线玩家且开启了代理，直接实时解析所有配置的变量
         val onlinePlayer = Bukkit.getPlayerExact(playerName)
         if (onlinePlayer != null && Config.placeholder__proxy_online) {
@@ -225,7 +237,7 @@ object PlayerOfflineStatusAPI {
                     .slice(PlayerPAPIs.papi, PlayerPAPIs.value)
                     .select { PlayerPAPIs.name eq playerName }
                     .associate { it[PlayerPAPIs.papi] to it[PlayerPAPIs.value] }
-            } ?: emptyMap()
+            }
         }.getOrElse { emptyMap() }
     }
 
@@ -236,7 +248,7 @@ object PlayerOfflineStatusAPI {
      *
      * @return true 表示萌芽插件已加载且槽位功能已启用
      */
-    fun isGermSlotAvailable(): Boolean {
+    override fun isGermSlotAvailable(): Boolean {
         return GermHook.hasHooked && (Config.germ__enable || Config.germ__slot_holder || Config.germ__slot_holder_redis__enable)
     }
 
@@ -245,7 +257,7 @@ object PlayerOfflineStatusAPI {
      *
      * @return identity 集合，若萌芽不可用则返回空集合
      */
-    fun getAllGermIdentities(): Collection<String> {
+    override fun getAllGermIdentities(): Collection<String> {
         if (!GermHook.hasHooked) return emptyList()
         return when {
             Config.germ__slot_holder_redis__enable -> runCatching { GermSlotRedisHandler.allIdentitys }.getOrElse { emptyList() }
@@ -263,7 +275,7 @@ object PlayerOfflineStatusAPI {
      * @return CacheStats 对象，包含命中率、加载时间等统计信息
      *         若 PAPI 功能未启用则返回 null
      */
-    fun getPAPICacheStats(): CacheStats? {
+    override fun getPAPICacheStats(): CacheStats? {
         return try {
             val clazz = Class.forName("top.iseason.bukkit.playerofflinestatus.papi.PAPI")
             val method = clazz.getDeclaredMethod("getCacheStats")
@@ -280,7 +292,7 @@ object PlayerOfflineStatusAPI {
      * @return CacheStats 对象，包含命中率、加载时间等统计信息
      *         若 Germ 功能未启用则返回 null
      */
-    fun getGermSlotCacheStats(): CacheStats? {
+    override fun getGermSlotCacheStats(): CacheStats? {
         return try {
             val clazz = Class.forName("top.iseason.bukkit.playerofflinestatus.germ.GermListener")
             val method = clazz.getDeclaredMethod("getCacheStats")
@@ -297,7 +309,7 @@ object PlayerOfflineStatusAPI {
      * @return CacheStats 对象，包含命中率、加载时间等统计信息
      *         若 Redis 模式未启用则返回 null
      */
-    fun getRedisCacheStats(): CacheStats? {
+    override fun getRedisCacheStats(): CacheStats? {
         if (!Config.germ__slot_holder_redis__enable) return null
         return try {
             val clazz = Class.forName("top.iseason.bukkit.playerofflinestatus.germ.GermSlotRedisHandler")

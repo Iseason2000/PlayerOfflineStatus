@@ -20,7 +20,7 @@ subprojects {
         plugin<JavaLibraryPlugin>()
     }
     repositories {
-//    阿里的服务器速度快一点
+        mavenLocal()
         maven {
             name = "aliyun"
             url = uri("https://maven.aliyun.com/repository/public")
@@ -59,7 +59,7 @@ subprojects {
         val exposedVersion: String by rootProject
         val nbtEditorVersion: String by rootProject
         compileOnly("io.github.bananapuncher714:nbteditor:$nbtEditorVersion")
-        compileOnly("me.clip:placeholderapi:2.11.2")
+        compileOnly("me.clip:placeholderapi:2.10.6")
         compileOnly("org.jetbrains.exposed:exposed-core:$exposedVersion")
         compileOnly("org.jetbrains.exposed:exposed-dao:$exposedVersion")
         compileOnly("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
