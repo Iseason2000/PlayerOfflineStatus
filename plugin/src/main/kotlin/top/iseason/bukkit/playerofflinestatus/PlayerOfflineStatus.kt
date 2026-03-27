@@ -17,6 +17,12 @@ import top.iseason.bukkittemplate.debug.info
 import top.iseason.bukkittemplate.debug.warn
 import top.iseason.bukkittemplate.hook.PlaceHolderHook
 import top.iseason.bukkittemplate.utils.bukkit.EventUtils.registerListener
+import top.iseason.bukkit.playerofflinestatus.api.POSAPI
+import top.iseason.bukkit.playerofflinestatus.api.PlayerOfflineStatusAPI
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+import org.bukkit.plugin.ServicesManager
+import org.bukkit.plugin.ServicePriority
 
 object PlayerOfflineStatus : BukkitPlugin {
 
@@ -73,24 +79,45 @@ object PlayerOfflineStatus : BukkitPlugin {
         CommandHandler.updateCommands()
         Config.isInit = true
         Config.updateTask()
+
+        // 强制刷新README文件到插件数据目录
+        val pluginDataFolder = BukkitTemplate.getPlugin().dataFolder
+        pluginDataFolder.mkdirs()
+        val readmeFile = java.io.File(pluginDataFolder, "README.md")
+        val readmeContent = BukkitTemplate.getPlugin().getResource("README.md")?.let { stream ->
+            InputStreamReader(stream, StandardCharsets.UTF_8).use { it.readText() }
+        } ?: "README.md 加载失败，请查看插件jar包内的 README.md 文件。"
+        readmeFile.writeText(readmeContent, StandardCharsets.UTF_8)
+
         val trimIndent = """
             　
-               _ (`-.                .-')    
-              ( (OO  )              ( OO ).  
-             _.`     \ .-'),-----. (_)---\_) 
-            (__...--''( OO'  .-.  '/    _ |  
-             |  /  | |/   |  | |  |\  :` `.  
-             |  |_.' |\_) |  |\|  | '..`''.) 
-             |  .___.'  \ |  | |  |.-._)   \ 
-             |  |        `'  '-'  '\       / 
-             `--'          `-----'  `-----'  
+               _ (`-.                .-')
+              ( (OO  )              ( OO ).
+             _.`     \ .-'),-----. (_)---\_)
+            (__...--''( OO'  .-.  '/    _ |
+             |  /  | |/   |  | |  |\  :` `.
+             |  |_.' |\_) |  |\|  | '..`''.)
+             |  .___.'  \ |  | |  |.-._)   \
+             |  |        `'  '-'  '\       /
+             `--'          `-----'  `-----'
             　
-             作者: Iseason 
+             作者: Iseason
              QQ: 1347811744
              　
         """.trimIndent()
         info(trimIndent)
-        info("&a插件已加载! &7请在变量前面添加 pos_[玩家名称]_ 使用离线变量")
+        info("&a插件已加载! &7请查看插件文件夹内的 &6README.md &7查看使用说明")
+
+        // 注册 PlayerOfflineStatusAPI 到 Bukkit Services
+        try {
+            val servicesManager = BukkitTemplate.getPlugin().server.servicesManager
+            val plugin = BukkitTemplate.getPlugin() as org.bukkit.plugin.Plugin
+            servicesManager.register(POSAPI::class.java, PlayerOfflineStatusAPI as POSAPI, plugin, ServicePriority.Normal)
+            info("&aPlayerOfflineStatusAPI 已注册到 Services")
+        } catch (e: Exception) {
+            warn("&cPlayerOfflineStatusAPI 注册失败: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     override fun onDisable() {
